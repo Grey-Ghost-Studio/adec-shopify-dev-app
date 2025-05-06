@@ -1,51 +1,29 @@
-{% schema %}
-{
-  "name": "Reserve Product Form",
-  "target": "section",
-  "stylesheet": "app.css",
-  "javascript": "app.js",
-  "settings": [
-    {
-      "type": "text",
-      "id": "form_title",
-      "label": "Form Title",
-      "default": "Reserve Product"
-    },
-    {
-      "type": "text",
-      "id": "submit_button_text",
-      "label": "Submit Button Text",
-      "default": "Submit"
-    }
-  ]
-}
-{% endschema %}
-
 <div class="reserve-product-form-wrapper">
-  <h2>{{ section.settings.form_title }}</h2>
+  <h2>{{ block.settings.form_title }}</h2>
 
-  <p>Reserve this package by filling out the form below. We will place a no-cost hold for 2 business days. During that time, please work with an A-dec Territory Manager or Dealer to complete the sale.</p>
-  
-  {% form 'reserve', class: 'reserve-product-form' %}
+  {% if block.settings.form_description != blank %}
+    {{ block.settings.form_description }}
+  {% endif %}
+  {% form 'contact', class: 'reserve-product-form' %}
     <div class="form-field">
-      <label for="practice_name">Practice Name</label>
-      <input type="text" id="practice_name" name="reserve[practice_name]" required>
+      <label for="practice_name">Practice name</label>
+      <input type="text" id="practice_name" name="contact[practice_name]" required>
     </div>
     
     <div class="form-field">
-      <label for="zip_code">Zip Code</label>
-      <input type="text" id="zip_code" name="reserve[zip_code]" pattern="[0-9]{5}" title="Please enter a valid 5-digit zip code" required>
+      <label for="zip_code">Practice ZIP/Postal Code</label>
+      <input type="text" id="zip_code" name="contact[zip_code]" pattern="[0-9]{5}" title="Please enter a valid 5-digit zip code" required>
     </div>
     
     <div class="form-field">
-      <label for="email">Email Address</label>
-      <input type="email" id="email" name="reserve[email]" required>
+      <label for="email">Contact email</label>
+      <input type="email" id="email" name="contact[email]" required>
     </div>
     
     <div class="form-field">
       <label for="role">Role</label>
-      <select id="role" name="reserve[role]" required>
-        <option value="" disabled selected>Select your role</option>
+      <select id="role" name="contact[role]" required>
+        <option value="" disabled selected>&ndash;&nbsp;Select your role&nbsp;&ndash;</option>
         <option value="doctor">Doctor</option>
         <option value="nurse">Nurse</option>
         <option value="administrator">Administrator</option>
@@ -55,80 +33,36 @@
     </div>
     
     <div class="form-field">
-      <button type="submit" class="submit-button">{{ section.settings.submit_button_text }}</button>
+      <button type="submit" class="submit-button">{{ block.settings.submit_button_text }}</button>
     </div>
   {% endform %}
 </div>
 
-<style>
-  .reserve-product-form {
-    max-width: 600px;
-    margin: 0 auto;
-    padding: 20px;
-    background-color: #f9f9f9;
-    border-radius: 8px;
+{% schema %}
+  {
+    "name": "Reserve Product Form",
+    "target": "section",
+    "stylesheet": "reserve-product.css",
+    "javascript": "reserve-product.js",
+    "settings": [
+      {
+        "type": "text",
+        "id": "form_title",
+        "label": "Form Title",
+        "default": "Reserve Product"
+      },
+      {
+        "type": "richtext",
+        "id": "form_description",
+        "label": "Form Description",
+        "default": "<p>Reserve this package by filling out the form below. We will place a no-cost hold for <strong>2 business days</strong>. During that time, please work with an <a href='' title='A-dec 511R Dental Chair Package'>A-dec Territory Manager or Dealer</a> to complete the sale.</p>"
+      },
+      {
+        "type": "text",
+        "id": "submit_button_text",
+        "label": "Submit Button Text",
+        "default": "Reserve package"
+      }
+    ]
   }
-  
-  .reserve-product-form h2 {
-    text-align: center;
-    margin-bottom: 20px;
-  }
-  
-  .form-field {
-    margin-bottom: 15px;
-  }
-  
-  .form-field label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: 500;
-  }
-  
-  .form-field input,
-  .form-field select {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 16px;
-  }
-  
-  .submit-button {
-    background-color: #4B70DD;
-    color: white;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 16px;
-    width: 100%;
-    transition: background-color 0.3s;
-  }
-  
-  .submit-button:hover {
-    background-color: #3A5BBF;
-  }
-</style>
-
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('.practice-form');
-    
-    form.addEventListener('submit', function(event) {
-      // You can add form validation or submission handling here
-      console.log('Form submitted');
-      
-      // Example: Collect form data
-      const formData = {
-        practiceName: document.getElementById('practice_name').value,
-        zipCode: document.getElementById('zip_code').value,
-        email: document.getElementById('email').value,
-        role: document.getElementById('role').value
-      };
-      
-      console.log('Form data:', formData);
-      
-      // You can add additional form processing or API calls here
-    });
-  });
-</script>
+{% endschema %}
