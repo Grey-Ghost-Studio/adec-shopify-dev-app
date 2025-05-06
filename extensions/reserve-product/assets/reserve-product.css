@@ -1,6 +1,20 @@
+.reserve-product-form-wrapper {
+    .price {
+        display: flex;
+        align-items: center;
+        .price-freight {
+            font-size: 16px;
+        }
+    }
+}
+
 .reserve-product-form {
     margin: 0 auto;
     /* color: #003B5C; */
+    .form-field.is-required label:after {
+        content: "*";
+        color: inherit;
+    }
 }
 
 .reserve-product-form h2 {
