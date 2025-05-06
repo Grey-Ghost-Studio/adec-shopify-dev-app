@@ -1,45 +1,63 @@
-<div class="reserve-product-form-wrapper">
-  {% if product %}
-    <h2>{{ block.settings.form_title }} {{ product.metafields.custom.stocking_number }}</h2>
-    <h3 class="price price--large">{{ product.price | money_with_currency }}&nbsp;<span class="price-freight">+ Freight</span></h3>
-  {% endif %}
 
-  {% if block.settings.form_description != blank %}
-    {{ block.settings.form_description }}
-  {% endif %}
-  {% form 'contact', class: 'reserve-product-form' %}
-    <div class="form-field is-required">
-      <label for="practice_name">Practice name</label>
-      <input type="text" id="practice_name" name="contact[practice_name]" required>
+{% comment %}
+  Button element markup to add to theme to open modal:
+  <button type="button" class="reserve-button button button--primary" data-modal-trigger="reserve-modal-{{ product.id }}" style="display: block; margin: 37px auto 0;">Reserve package</button>
+{% endcomment %}
+
+
+<div id="reserve-modal-{{ product.id }}" class="reserve-modal" aria-hidden="true">
+  <div class="reserve-modal__overlay" data-modal-close></div>
+  <div class="reserve-modal__content" role="dialog" aria-modal="true">
+    <button type="button" class="reserve-modal__close" data-modal-close aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+
+    <div class="reserve-modal__header">
+        <h2 class="reserve-title">{{ block.settings.form_title }} {{ product.metafields.custom.stocking_number }}</h2>
+        <h3 class="reserve-price price price--large">{{ product.price | money_with_currency }}&nbsp;<span class="price-freight">+ Freight</span></h3>
     </div>
-    
-    <div class="form-field is-required">
-      <label for="zip_code">Practice ZIP/Postal Code</label>
-      <input type="text" id="zip_code" name="contact[zip_code]" pattern="[0-9]{5}" title="Please enter a valid 5-digit zip code" required>
+
+    <div class="reserve-modal__body>
+      {% if block.settings.form_description != blank %}
+        {{ block.settings.form_description }}
+      {% endif %}
+
+      {% form 'contact', class: 'reserve__form' %}
+        <div class="form-field is-required">
+          <label for="practice_name">Practice name</label>
+          <input type="text" id="practice_name" name="contact[practice_name]" required>
+        </div>
+        
+        <div class="form-field is-required">
+          <label for="zip_code">Practice ZIP/Postal Code</label>
+          <input type="text" id="zip_code" name="contact[zip_code]" pattern="[0-9]{5}" title="Please enter a valid 5-digit zip code" required>
+        </div>
+        
+        <div class="form-field is-required">
+          <label for="email">Contact email</label>
+          <input type="email" id="email" name="contact[email]" required>
+        </div>
+        
+        <div class="form-field is-required">
+          <label for="role">Your role?</label>
+          <select id="role" name="contact[role]" required>
+            <option value="" disabled selected>&ndash;&nbsp;Select your role&nbsp;&ndash;</option>
+            <option value="doctor">Doctor</option>
+            <option value="nurse">Nurse</option>
+            <option value="administrator">Administrator</option>
+            <option value="receptionist">Receptionist</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        
+        <div class="form-field">
+          <button type="submit" class="submit-button">{{ block.settings.submit_button_text }}</button>
+        </div>
+      {% endform %}
     </div>
-    
-    <div class="form-field is-required">
-      <label for="email">Contact email</label>
-      <input type="email" id="email" name="contact[email]" required>
-    </div>
-    
-    <div class="form-field is-required">
-      <label for="role">Your role?</label>
-      <select id="role" name="contact[role]" required>
-        <option value="" disabled selected>&ndash;&nbsp;Select your role&nbsp;&ndash;</option>
-        <option value="doctor">Doctor</option>
-        <option value="nurse">Nurse</option>
-        <option value="administrator">Administrator</option>
-        <option value="receptionist">Receptionist</option>
-        <option value="other">Other</option>
-      </select>
-    </div>
-    
-    <div class="form-field">
-      <button type="submit" class="submit-button">{{ block.settings.submit_button_text }}</button>
-    </div>
-  {% endform %}
+  </div>
 </div>
+
 
 {% schema %}
   {
