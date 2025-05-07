@@ -8,9 +8,17 @@
     "dev": "shopify app dev",
     "info": "shopify app info",
     "generate": "shopify app generate",
-    "deploy": "shopify app deploy"
+    "deploy": "shopify app deploy",
+    "netlify-dev": "netlify dev",
+    "deploy-functions": "netlify deploy --prod"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@shopify/shopify-api": "^7.5.0",
+    "crypto": "^1.0.1"
+  },
+  "devDependencies": {
+    "netlify-cli": "^15.0.0"
+  },
   "trustedDependencies": [
     "@shopify/plugin-cloudflare"
   ],
