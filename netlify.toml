@@ -1,0 +1,7 @@
+[build]
+  # No build needed for simple functions
+  command = "echo 'No build required'"
+  publish = "public"
+
+[functions]
+  directory = "netlify/functions"
