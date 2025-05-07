@@ -5,3 +5,9 @@
 
 [functions]
   directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+[dev]
+  framework = "#static"
+  functions = "netlify/functions"
+  publish = "public"
