@@ -1,8 +1,25 @@
-// Function file: create-draft-order.js
+// netlify/functions/create-draft-order.js
+
 const crypto = require('crypto');
-const { Shopify, ApiVersion } = require('@shopify/shopify-api');
+const axios = require('axios');
+
+// In production, use a database to store tokens
+// This is a simplified example
+const tokens = {};
 
 exports.handler = async function(event, context) {
+  // Set CORS headers for preflight requests
+  if (event.httpMethod === 'OPTIONS') {
+    return {
+      statusCode: 204,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS'
+      }
+    };
+  }
+
   try {
     // Only allow POST requests
     if (event.httpMethod !== 'POST') {
@@ -35,7 +52,7 @@ exports.handler = async function(event, context) {
     }
     
     // Verify the request is coming from Shopify
-    const isValid = verifyRequest(shop, signature, timestamp);
+    const isValid = verifyShopifyProxy(queryParams);
     if (!isValid) {
       return {
         statusCode: 401,
@@ -43,56 +60,86 @@ exports.handler = async function(event, context) {
       };
     }
     
-    // Initialize Shopify API
-    const shopify = new Shopify({
-      apiKey: process.env.SHOPIFY_API_KEY,
-      apiSecretKey: process.env.SHOPIFY_API_SECRET,
-      apiVersion: ApiVersion.April24,
-      isEmbeddedApp: true,
-      hostName: process.env.HOST ? process.env.HOST.replace(/https:\/\//, '') : ''
-    });
+    // Get the access token for this shop
+    // In production, retrieve from a database
+    let accessToken = tokens[shop];
     
-    // Get a session token for API access
-    const accessToken = await getStoreAccessToken(shop);
+    // If no token available, check our token endpoint
+    if (!accessToken) {
+      try {
+        // In production, this would be a database lookup
+        const tokenResponse = await axios.get(
+          `https://adec-shopify-dev-app.netlify.app/.netlify/functions/oauth/token?shop=${shop}`
+        );
+        
+        if (tokenResponse.data && tokenResponse.data.access_token) {
+          accessToken = tokenResponse.data.access_token;
+          tokens[shop] = accessToken; // Cache it
+        }
+      } catch (error) {
+        console.error('Error retrieving token:', error);
+      }
+    }
+    
+    // If still no token, return error
     if (!accessToken) {
       return {
-        statusCode: 403,
-        body: JSON.stringify({ error: 'Could not authenticate with the store' })
+        statusCode: 401,
+        body: JSON.stringify({ 
+          error: 'Unauthorized', 
+          token_required: true 
+        })
       };
     }
     
-    // Create client for Shopify Admin API
-    const client = new shopify.clients.Rest({
-      session: {
-        shop,
-        accessToken
-      }
-    });
-    
     // Make API call to create draft order
-    const response = await client.post({
-      path: 'draft_orders',
-      data: { draft_order }
-    });
+    const response = await axios.post(
+      `https://${shop}/admin/api/2023-04/draft_orders.json`,
+      { draft_order },
+      {
+        headers: {
+          'X-Shopify-Access-Token': accessToken,
+          'Content-Type': 'application/json'
+        }
+      }
+    );
     
     // Return successful response
     return {
       statusCode: 200,
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
       },
       body: JSON.stringify({
         success: true,
-        draft_order: response.body.draft_order
+        draft_order: response.data.draft_order
       })
     };
   } catch (error) {
     console.error("Error creating draft order:", error);
     
+    // Handle expired tokens
+    if (error.response && error.response.status === 401) {
+      return {
+        statusCode: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({
+          success: false,
+          error: "Access token expired",
+          token_required: true
+        })
+      };
+    }
+    
     return {
       statusCode: 500,
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*'
       },
       body: JSON.stringify({
         success: false,
@@ -103,43 +150,33 @@ exports.handler = async function(event, context) {
 };
 
 /**
- * Verifies the request signature from Shopify
+ * Verifies the request signature from Shopify App Proxy
  */
-function verifyRequest(shop, signature, timestamp) {
+function verifyShopifyProxy(query) {
+  const { signature, shop, timestamp, ...otherParams } = query;
+  
+  // Proxy secret from environment variables
   const appProxySecret = process.env.SHOPIFY_APP_PROXY_SECRET;
   
   if (!appProxySecret) {
-    console.error('Missing APP_PROXY_SECRET');
+    console.error('Missing SHOPIFY_APP_PROXY_SECRET environment variable');
     return false;
   }
   
-  // Create the message from the shop and timestamp
-  const message = `shop=${shop}&timestamp=${timestamp}`;
-  
-  // Calculate the hash using the proxy secret
-  const calculatedSignature = crypto
-    .createHmac('sha256', appProxySecret)
-    .update(message)
-    .digest('hex');
-  
-  // Compare calculated signature with provided signature
-  return crypto.timingSafeEqual(
-    Buffer.from(calculatedSignature, 'hex'),
-    Buffer.from(signature, 'hex')
-  );
-}
-
-/**
- * Gets a valid access token for the store
- * This is a simplified example - in production, you would use a database 
- * to store and retrieve tokens for each shop
- */
-async function getStoreAccessToken(shop) {
-  // In a production app, you would retrieve this from your database
-  // where you stored it during the OAuth process
-  
-  // For demo purposes only - DO NOT USE IN PRODUCTION
-  // In a real app, you should look up this token from your database
-  // based on the shop domain
-  return process.env[`TOKEN_${shop.replace(/\./g, '_')}`] || null;
-}
+  try {
+    // Create the message from the shop and timestamp
+    const message = `shop=${shop}&timestamp=${timestamp}`;
+    
+    // Calculate the hash using the proxy secret
+    const calculatedSignature = crypto
+      .createHmac('sha256', appProxySecret)
+      .update(message)
+      .digest('hex');
+    
+    // Compare calculated signature with provided signature
+    return signature === calculatedSignature;
+  } catch (error) {
+    console.error('Error verifying signature:', error);
+    return false;
+  }
+}s
