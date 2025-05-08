@@ -1,6 +1,6 @@
 // netlify/functions/oauth-callback.js
-const crypto = require('crypto');
-const axios = require('axios');
+import crypto from 'crypto';
+import axios from 'axios';
 
 // Your app's credentials (set in Netlify environment variables)
 const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
@@ -9,7 +9,7 @@ const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET;
 // In production, use a database to store tokens
 const tokens = {};
 
-exports.handler = async function(event, context) {
+export const handler = async function(event, context) {
   const queryParams = event.queryStringParameters || {};
   const { code, shop, state } = queryParams;
   

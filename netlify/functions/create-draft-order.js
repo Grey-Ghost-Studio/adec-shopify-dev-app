@@ -1,13 +1,23 @@
-// netlify/functions/create-draft-order.js
+// // netlify/functions/create-draft-order.js
 
-const crypto = require('crypto');
-const axios = require('axios');
+// TEST FUNCTION
+// export const handler = async function(event, context) {
+//   return {
+//     statusCode: 200,
+//     body: JSON.stringify({
+//       message: "Function is working"
+//     })
+//   };
+// };
+
+import crypto from 'crypto';
+import axios from 'axios';
 
 // In production, use a database to store tokens
 // This is a simplified example
 const tokens = {};
 
-exports.handler = async function(event, context) {
+export const handler = async function(event, context) {
   // Set CORS headers for preflight requests
   if (event.httpMethod === 'OPTIONS') {
     return {

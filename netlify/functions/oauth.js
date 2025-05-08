@@ -1,6 +1,6 @@
 // netlify/functions/oauth.js
-const crypto = require('crypto');
-const axios = require('axios');
+import crypto from 'crypto';
+import axios from 'axios';
 
 // Your app's credentials (set in Netlify environment variables)
 const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
@@ -10,7 +10,7 @@ const REDIRECT_URI = process.env.REDIRECT_URI; // e.g., https://adec-shopify-dev
 // Local memory for tokens (use a database in production)
 let tokens = {};
 
-exports.handler = async function(event, context) {
+export const handler = async function(event, context) {
   const path = event.path.split('/.netlify/functions/oauth')[1] || '';
   const queryParams = event.queryStringParameters || {};
 
