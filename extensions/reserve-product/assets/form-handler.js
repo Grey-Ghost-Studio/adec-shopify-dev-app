@@ -1,5 +1,3 @@
-// File location: extensions/your-extension-name/assets/form-handler.js
-
 document.addEventListener('DOMContentLoaded', function() {
   // Store original button text when page loads
   const submitButton = document.querySelector('.submit-button');
@@ -7,27 +5,22 @@ document.addEventListener('DOMContentLoaded', function() {
     submitButton.setAttribute('data-original-text', submitButton.innerText);
   }
   
-  // Select the form
+  // Set up form submission
   const reserveForm = document.querySelector('.reserve__form');
   if (reserveForm) {
-    // Add submit event listener to the form
     reserveForm.addEventListener('submit', function(event) {
-      // Prevent the default form submission
       event.preventDefault();
       
-      // Get form values
-      const practiceName = document.getElementById('practice_name').value;
-      const zipCode = document.getElementById('zip_code').value;
-      const email = document.getElementById('email').value;
-      const role = document.getElementById('role').value;
+      // Collect form data
+      const formData = {
+        practice_name: document.getElementById('practice_name').value,
+        zip_code: document.getElementById('zip_code').value,
+        email: document.getElementById('email').value,
+        role: document.getElementById('role').value
+      };
       
       // Create draft order
-      createDraftOrder({
-        practice_name: practiceName,
-        zip_code: zipCode,
-        email: email,
-        role: role
-      });
+      createDraftOrder(formData);
     });
   }
 });
@@ -45,50 +38,38 @@ function createDraftOrder(formData) {
     draft_order: {
       line_items: [
         {
-          title: 'Reservation for ' + formData.practice_name,
-          price: '0.00', // Free reservation
+          title: `Reservation for ${formData.practice_name}`,
+          price: '0.00',
           quantity: 1
         }
       ],
-      customer: {
-        email: formData.email
-      },
+      customer: { email: formData.email },
       note: `Practice Name: ${formData.practice_name}\nZIP/Postal Code: ${formData.zip_code}\nRole: ${formData.role}`,
       tags: `reservation, ${formData.role}, ${formData.zip_code}`
     }
   };
   
-  // Get the current shop domain from the window location
+  // Get the shop domain and create the app proxy URL
   const shopDomain = Shopify.shop || window.location.hostname;
-  // Create the app proxy URL - make sure this matches your App Proxy configuration
   const appProxyPath = '/apps/create-draft-order';
-  // Current timestamp for signature verification
   const timestamp = Date.now();
+  const url = `${appProxyPath}?shop=${shopDomain}&timestamp=${timestamp}`;
   
-  // Make API call to app proxy that will create the draft order
-  fetch(`${appProxyPath}?shop=${shopDomain}&timestamp=${timestamp}`, {
+  // Send the request
+  fetch(url, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(draftOrderData)
   })
   .then(response => {
     if (!response.ok) {
-      return response.json().then(errorData => {
-        throw new Error(errorData.error || 'Unknown error occurred');
-      });
+      throw new Error(`Request failed with status ${response.status}`);
     }
     return response.json();
   })
   .then(data => {
-    // Handle successful response
-    console.log('Draft order created:', data);
-    
-    // Show success message to user
+    // Handle success
     showMessage('success', 'Your reservation has been submitted successfully!');
-    
-    // Reset the form
     document.querySelector('.reserve__form').reset();
   })
   .catch(error => {
@@ -97,35 +78,30 @@ function createDraftOrder(formData) {
     showMessage('error', 'There was an error submitting your reservation. Please try again.');
   })
   .finally(() => {
-    // Hide loading state
     toggleLoadingState(false);
   });
 }
 
 /**
  * Toggles loading state on the submit button
- * @param {boolean} isLoading - Whether loading state should be active
  */
 function toggleLoadingState(isLoading) {
   const submitButton = document.querySelector('.submit-button');
+  if (!submitButton) return;
   
-  if (submitButton) {
-    if (isLoading) {
-      submitButton.disabled = true;
-      submitButton.classList.add('is-loading');
-      submitButton.innerText = 'Submitting...';
-    } else {
-      submitButton.disabled = false;
-      submitButton.classList.remove('is-loading');
-      submitButton.innerText = submitButton.getAttribute('data-original-text') || 'Submit';
-    }
+  if (isLoading) {
+    submitButton.disabled = true;
+    submitButton.classList.add('is-loading');
+    submitButton.innerText = 'Submitting...';
+  } else {
+    submitButton.disabled = false;
+    submitButton.classList.remove('is-loading');
+    submitButton.innerText = submitButton.getAttribute('data-original-text') || 'Submit';
   }
 }
 
 /**
  * Displays a message to the user
- * @param {string} type - The type of message (success/error)
- * @param {string} message - The message text
  */
 function showMessage(type, message) {
   // Remove any existing message
@@ -145,8 +121,6 @@ function showMessage(type, message) {
   
   // Auto-remove success messages after delay
   if (type === 'success') {
-    setTimeout(() => {
-      messageElement.remove();
-    }, 5000);
+    setTimeout(() => messageElement.remove(), 5000);
   }
 }

@@ -1,18 +1,14 @@
-// netlify/functions/oauth-callback.js
-import crypto from 'crypto';
 import axios from 'axios';
 
-// Your app's credentials (set in Netlify environment variables)
+// App credentials and configuration
 const SHOPIFY_API_KEY = process.env.SHOPIFY_API_KEY;
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET;
-
-// In production, use a database to store tokens
-const tokens = {};
+const SHOP_DOMAIN = process.env.SHOP_DOMAIN;
 
 export const handler = async function(event, context) {
-  const queryParams = event.queryStringParameters || {};
-  const { code, shop, state } = queryParams;
+  const { code, shop } = event.queryStringParameters || {};
   
+  // Validate required parameters
   if (!code || !shop) {
     return {
       statusCode: 400,
@@ -30,10 +26,11 @@ export const handler = async function(event, context) {
     
     const { access_token } = tokenResponse.data;
     
-    // Store the token (in a database in production)
-    tokens[shop] = access_token;
-    
-    console.log(`Token obtained for ${shop}: ${access_token}`);
+    // Log the token in an easy-to-find format
+    // console.log('\n' + '='.repeat(60));
+    // console.log('COPY THIS ACCESS TOKEN TO YOUR NETLIFY ENVIRONMENT VARIABLES');
+    // console.log(`ACCESS TOKEN: ${access_token}`);
+    // console.log('='.repeat(60) + '\n');
     
     // Redirect back to the app in the Shopify admin
     return {
@@ -44,10 +41,13 @@ export const handler = async function(event, context) {
       body: ''
     };
   } catch (error) {
-    console.error('Error exchanging code for token:', error);
+    console.error('OAuth error:', error.message);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: 'Failed to complete OAuth' })
+      body: JSON.stringify({ 
+        error: 'Failed to complete OAuth process',
+        details: error.message
+      })
     };
   }
 };

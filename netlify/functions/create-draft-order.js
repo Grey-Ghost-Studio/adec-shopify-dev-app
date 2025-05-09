@@ -1,21 +1,21 @@
 import crypto from 'crypto';
 import axios from 'axios';
 
-// Your store details and token (set these in Netlify environment variables)
-const SHOP_DOMAIN = process.env.SHOP_DOMAIN; // e.g., your-store.myshopify.com
+const SHOP_DOMAIN = process.env.SHOP_DOMAIN;
 const ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
+const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET;
+
+// CORS headers for all responses
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS'
+};
 
 export const handler = async function(event, context) {
-  // Set CORS headers for preflight requests
+  // Handle preflight requests
   if (event.httpMethod === 'OPTIONS') {
-    return {
-      statusCode: 204,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Headers': 'Content-Type',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS'
-      }
-    };
+    return { statusCode: 204, headers: corsHeaders };
   }
 
   try {
@@ -23,44 +23,56 @@ export const handler = async function(event, context) {
     if (event.httpMethod !== 'POST') {
       return {
         statusCode: 405,
+        headers: corsHeaders,
         body: JSON.stringify({ error: 'Method not allowed' })
       };
     }
     
     // Parse request body
-    const requestBody = JSON.parse(event.body || '{}');
-    const { draft_order } = requestBody;
-    
+    const { draft_order } = JSON.parse(event.body || '{}');
     if (!draft_order) {
       return {
         statusCode: 400,
+        headers: corsHeaders,
         body: JSON.stringify({ error: 'Missing draft order data' })
       };
     }
     
-    // Extract shop and signature from query parameters
+    // Extract and validate query parameters
     const queryParams = event.queryStringParameters || {};
-    const { shop, signature, timestamp } = queryParams;
-    
-    if (!shop || !signature || !timestamp) {
+    const { signature, timestamp } = queryParams;
+    if (!signature || !timestamp) {
       return {
         statusCode: 400,
+        headers: corsHeaders,
         body: JSON.stringify({ error: 'Missing required query parameters' })
       };
     }
     
     // Verify the request is coming from Shopify
-    const isValid = verifyShopifyProxy(queryParams);
-    if (!isValid) {
+    const verificationResult = verifyShopifySignature(queryParams);
+    if (!verificationResult.valid) {
+      console.log("Verification failed:", verificationResult.method);
       return {
         statusCode: 401,
+        headers: corsHeaders,
         body: JSON.stringify({ error: 'Invalid signature' })
+      };
+    }
+    
+    // Check for access token
+    if (!ACCESS_TOKEN) {
+      console.error("Missing SHOPIFY_ACCESS_TOKEN environment variable");
+      return {
+        statusCode: 500,
+        headers: corsHeaders,
+        body: JSON.stringify({ error: 'Server configuration error - missing access token' })
       };
     }
     
     // Make API call to create draft order
     const response = await axios.post(
-      `https://${SHOP_DOMAIN || shop}/admin/api/2023-04/draft_orders.json`,
+      `https://${SHOP_DOMAIN}/admin/api/2023-04/draft_orders.json`,
       { draft_order },
       {
         headers: {
@@ -73,10 +85,7 @@ export const handler = async function(event, context) {
     // Return successful response
     return {
       statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         success: true,
         draft_order: response.data.draft_order
@@ -85,28 +94,22 @@ export const handler = async function(event, context) {
   } catch (error) {
     console.error("Error creating draft order:", error);
     
-    // Handle expired tokens
+    // Handle specific 401 errors
     if (error.response && error.response.status === 401) {
       return {
         statusCode: 401,
-        headers: {
-          'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': '*'
-        },
+        headers: corsHeaders,
         body: JSON.stringify({
           success: false,
-          error: "Access token expired",
-          token_required: true
+          error: "Access token expired or invalid"
         })
       };
     }
     
+    // Generic error response
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
+      headers: corsHeaders,
       body: JSON.stringify({
         success: false,
         error: error.message || "Server error"
@@ -116,33 +119,74 @@ export const handler = async function(event, context) {
 };
 
 /**
- * Verifies the request signature from Shopify App Proxy
+ * Verifies if a request is coming from Shopify based on the signature
  */
-function verifyShopifyProxy(query) {
-  const { signature, shop, timestamp, ...otherParams } = query;
+function verifyShopifySignature(query) {
+  const { signature, ...params } = query;
   
-  // Proxy secret from environment variables
-  const appProxySecret = process.env.SHOPIFY_APP_PROXY_SECRET;
-  
-  if (!appProxySecret) {
-    console.error('Missing SHOPIFY_APP_PROXY_SECRET environment variable');
-    return false;
+  if (!signature || !SHOPIFY_API_SECRET) {
+    return { valid: false, method: 'Missing signature or API secret' };
   }
   
+  // Try different signature methods - we know Method 4 works from previous logs
   try {
-    // Create the message from the shop and timestamp
-    const message = `shop=${shop}&timestamp=${timestamp}`;
+    // Method 4: All params sorted, no separator (the one that worked previously)
+    const signatureString = Object.keys(params)
+      .sort()
+      .map(key => `${key}=${params[key]}`)
+      .join('');
     
-    // Calculate the hash using the proxy secret
     const calculatedSignature = crypto
-      .createHmac('sha256', appProxySecret)
-      .update(message)
+      .createHmac('sha256', SHOPIFY_API_SECRET)
+      .update(signatureString)
       .digest('hex');
     
-    // Compare calculated signature with provided signature
-    return signature === calculatedSignature;
+    if (signature === calculatedSignature) {
+      return { valid: true, method: 'Method 4: All params sorted, no separator' };
+    }
+    
+    // Fallback to other methods if the primary one doesn't work
+    const methods = [
+      // Method 1: shop & timestamp with & separator
+      { 
+        string: `shop=${params.shop || SHOP_DOMAIN}&timestamp=${params.timestamp}`,
+        label: 'Method 1: shop & timestamp with & separator'
+      },
+      // Method 2: shop & timestamp with no separator
+      {
+        string: `shop=${params.shop || SHOP_DOMAIN}timestamp=${params.timestamp}`,
+        label: 'Method 2: shop & timestamp with no separator'
+      },
+      // Method 3: All params sorted with & separator
+      {
+        string: Object.keys(params).sort().map(key => `${key}=${params[key]}`).join('&'),
+        label: 'Method 3: All params sorted with & separator'
+      },
+      // Method 5: All params unsorted with & separator
+      {
+        string: Object.keys(params).map(key => `${key}=${params[key]}`).join('&'),
+        label: 'Method 5: All params unsorted with & separator'
+      },
+      // Method 6: All params unsorted with no separator
+      {
+        string: Object.keys(params).map(key => `${key}=${params[key]}`).join(''),
+        label: 'Method 6: All params unsorted with no separator'
+      }
+    ];
+    
+    for (const method of methods) {
+      const methodSignature = crypto
+        .createHmac('sha256', SHOPIFY_API_SECRET)
+        .update(method.string)
+        .digest('hex');
+      
+      if (signature === methodSignature) {
+        return { valid: true, method: method.label };
+      }
+    }
+    
+    return { valid: false, method: 'All signature methods failed' };
   } catch (error) {
-    console.error('Error verifying signature:', error);
-    return false;
+    return { valid: false, method: `Verification error: ${error.message}` };
   }
 }
