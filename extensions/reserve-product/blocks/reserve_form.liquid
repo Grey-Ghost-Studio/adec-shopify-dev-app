@@ -4,6 +4,7 @@
   <button type="button" class="reserve-button button button--primary" data-modal-trigger="reserve-modal-{{ product.id }}" style="display: block; margin: 37px auto 0;">Reserve package</button>
 {% endcomment %}
 
+{{ 'form-handler.js' | asset_url | script_tag }}
 
 <div id="reserve-modal-{{ product.id }}" class="reserve-modal" aria-hidden="true">
   <div class="reserve-modal__overlay" data-modal-close></div>
