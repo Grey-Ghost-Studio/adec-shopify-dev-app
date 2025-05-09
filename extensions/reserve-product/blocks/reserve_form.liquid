@@ -1,7 +1,7 @@
 
 {% comment %}
   Button element markup to add to theme to open modal:
-  <button type="button" class="reserve-button button button--primary" data-modal-trigger="reserve-modal-{{ product.id }}" style="display: block; margin: 37px auto 0;">Reserve package</button>
+  <button type="button" class="button button--primary" data-modal-trigger="reserve-modal-{{ product.id }}" style="display: block; margin: 37px auto 0;">Reserve package</button>
 {% endcomment %}
 
 {{ 'form-handler.js' | asset_url | script_tag }}
@@ -23,25 +23,25 @@
         {{ block.settings.form_description }}
       {% endif %}
 
-      {% form 'contact', class: 'reserve__form' %}
+      <form class="reserve__form" onsubmit="return false;">
         <div class="form-field is-required">
           <label for="practice_name">Practice name</label>
-          <input type="text" id="practice_name" name="contact[practice_name]" required>
+          <input type="text" id="practice_name" name="practice_name" required>
         </div>
         
         <div class="form-field is-required">
           <label for="zip_code">Practice ZIP/Postal Code</label>
-          <input type="text" id="zip_code" name="contact[zip_code]" pattern="[0-9]{5}" title="Please enter a valid 5-digit zip code" required>
+          <input type="text" id="zip_code" name="zip_code" pattern="[0-9]{5}" title="Please enter a valid 5-digit zip code" required>
         </div>
         
         <div class="form-field is-required">
           <label for="email">Contact email</label>
-          <input type="email" id="email" name="contact[email]" required>
+          <input type="email" id="email" name="email" required>
         </div>
         
         <div class="form-field is-required">
           <label for="role">Your role?</label>
-          <select id="role" name="contact[role]" required>
+          <select id="role" name="role" required>
             <option value="" disabled selected>&ndash;&nbsp;Select your role&nbsp;&ndash;</option>
             <option value="doctor">Doctor</option>
             <option value="nurse">Nurse</option>
@@ -54,7 +54,7 @@
         <div class="form-field">
           <button type="submit" class="submit-button">{{ block.settings.submit_button_text }}</button>
         </div>
-      {% endform %}
+      </form>
     </div>
   </div>
 </div>
