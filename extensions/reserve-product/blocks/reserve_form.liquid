@@ -1,6 +1,6 @@
+<script src="{{ 'form-handler.js' | asset_url }}?v={{ 'now' | date: '%s' }}" defer></script>
+<script src="{{ 'modal.js' | asset_url }}?v={{ 'now' | date: '%s' }}" defer></script>
 
-{{ 'form-handler.js' | asset_url | script_tag }}
-{{ 'modal.js' | asset_url | script_tag }}
 
 <div id="reserve-modal-{{ product.id }}" class="reserve-modal" aria-hidden="true">
   <div class="reserve-modal__overlay" data-modal-close></div>
@@ -61,6 +61,7 @@
     "name": "Reserve Product Form",
     "target": "section",
     "stylesheet": "reserve-product.css",
+    "javascript": "reserve-product.js",
     "settings": [
       {
         "type": "text",
