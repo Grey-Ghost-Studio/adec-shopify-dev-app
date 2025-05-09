@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', function() {
   
   // Select the form
   const reserveForm = document.querySelector('.reserve__form');
-  
   if (reserveForm) {
     // Add submit event listener to the form
     reserveForm.addEventListener('submit', function(event) {
@@ -61,12 +60,13 @@ function createDraftOrder(formData) {
   
   // Get the current shop domain from the window location
   const shopDomain = Shopify.shop || window.location.hostname;
-  
   // Create the app proxy URL - make sure this matches your App Proxy configuration
   const appProxyPath = '/apps/create-draft-order';
+  // Current timestamp for signature verification
+  const timestamp = Date.now();
   
   // Make API call to app proxy that will create the draft order
-  fetch(`${appProxyPath}?shop=${shopDomain}`, {
+  fetch(`${appProxyPath}?shop=${shopDomain}&timestamp=${timestamp}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
