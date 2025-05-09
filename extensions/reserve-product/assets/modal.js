@@ -1,15 +1,9 @@
 document.addEventListener('DOMContentLoaded', function() {
 
-    // Modal functionality
-    const modalTriggers = document.querySelectorAll('[data-modal-trigger]');
-    console.log('Modal JS start');
-
     modalTriggers.forEach(trigger => {
-      console.log('Modal trigger:', trigger);
       trigger.addEventListener('click', function() {
         const modalId = this.getAttribute('data-modal-trigger');
         const modal = document.getElementById(modalId);
-        console.log('Modal click', modal);
         if (modal) {
           modal.classList.add('is-active');
           document.body.style.overflow = 'hidden'; // Prevent page scrolling
@@ -32,7 +26,6 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('keydown', function(event) {
       if (event.key === 'Escape') {
         const activeModal = document.querySelector('.reserve-modal.is-active');
-        
         if (activeModal) {
           activeModal.classList.remove('is-active');
           document.body.style.overflow = ''; // Restore page scrolling
