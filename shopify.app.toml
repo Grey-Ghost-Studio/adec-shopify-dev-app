@@ -20,3 +20,8 @@ redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
 
 [pos]
 embedded = false
+
+[app_proxy]
+prefix = "apps"
+subpath = "create-draft-order"
+url = "https://adec-shopify-dev-app.netlify.app/.netlify/functions/create-draft-order"
