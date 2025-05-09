@@ -1,21 +1,9 @@
-// // netlify/functions/create-draft-order.js
-
-// TEST FUNCTION
-// export const handler = async function(event, context) {
-//   return {
-//     statusCode: 200,
-//     body: JSON.stringify({
-//       message: "Function is working"
-//     })
-//   };
-// };
-
 import crypto from 'crypto';
 import axios from 'axios';
 
-// In production, use a database to store tokens
-// This is a simplified example
-const tokens = {};
+// Your store details and token (set these in Netlify environment variables)
+const SHOP_DOMAIN = process.env.SHOP_DOMAIN; // e.g., your-store.myshopify.com
+const ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 
 export const handler = async function(event, context) {
   // Set CORS headers for preflight requests
@@ -40,7 +28,7 @@ export const handler = async function(event, context) {
     }
     
     // Parse request body
-    const requestBody = JSON.parse(event.body);
+    const requestBody = JSON.parse(event.body || '{}');
     const { draft_order } = requestBody;
     
     if (!draft_order) {
@@ -70,45 +58,13 @@ export const handler = async function(event, context) {
       };
     }
     
-    // Get the access token for this shop
-    // In production, retrieve from a database
-    let accessToken = tokens[shop];
-    
-    // If no token available, check our token endpoint
-    if (!accessToken) {
-      try {
-        // In production, this would be a database lookup
-        const tokenResponse = await axios.get(
-          `https://adec-shopify-dev-app.netlify.app/.netlify/functions/oauth/token?shop=${shop}`
-        );
-        
-        if (tokenResponse.data && tokenResponse.data.access_token) {
-          accessToken = tokenResponse.data.access_token;
-          tokens[shop] = accessToken; // Cache it
-        }
-      } catch (error) {
-        console.error('Error retrieving token:', error);
-      }
-    }
-    
-    // If still no token, return error
-    if (!accessToken) {
-      return {
-        statusCode: 401,
-        body: JSON.stringify({ 
-          error: 'Unauthorized', 
-          token_required: true 
-        })
-      };
-    }
-    
     // Make API call to create draft order
     const response = await axios.post(
-      `https://${shop}/admin/api/2023-04/draft_orders.json`,
+      `https://${SHOP_DOMAIN || shop}/admin/api/2023-04/draft_orders.json`,
       { draft_order },
       {
         headers: {
-          'X-Shopify-Access-Token': accessToken,
+          'X-Shopify-Access-Token': ACCESS_TOKEN,
           'Content-Type': 'application/json'
         }
       }
@@ -189,4 +145,4 @@ function verifyShopifyProxy(query) {
     console.error('Error verifying signature:', error);
     return false;
   }
-}s
+}
