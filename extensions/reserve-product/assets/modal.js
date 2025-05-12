@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
+    const modalTriggers = document.querySelectorAll('[data-modal-trigger]');
 
     modalTriggers.forEach(trigger => {
       trigger.addEventListener('click', function() {

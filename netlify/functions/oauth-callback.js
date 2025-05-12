@@ -27,10 +27,10 @@ export const handler = async function(event, context) {
     const { access_token } = tokenResponse.data;
     
     // Log the token in an easy-to-find format
-    // console.log('\n' + '='.repeat(60));
-    // console.log('COPY THIS ACCESS TOKEN TO YOUR NETLIFY ENVIRONMENT VARIABLES');
-    // console.log(`ACCESS TOKEN: ${access_token}`);
-    // console.log('='.repeat(60) + '\n');
+    console.log('\n' + '='.repeat(60));
+    console.log('COPY THIS ACCESS TOKEN TO YOUR NETLIFY ENVIRONMENT VARIABLES');
+    console.log(`ACCESS TOKEN: ${access_token}`);
+    console.log('='.repeat(60) + '\n');
     
     // Redirect back to the app in the Shopify admin
     return {
