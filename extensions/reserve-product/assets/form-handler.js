@@ -358,7 +358,7 @@ function createDraftOrder(formData, productInfo) {
   
   // Add stocking number tag first if available
   if (productInfo.stocking_number) {
-    orderTags.push(`stock-${productInfo.stocking_number.toUpperCase()}`);
+    orderTags.push(productInfo.stocking_number.toUpperCase());
   }
   
   // Add other tags
@@ -441,10 +441,19 @@ function createDraftOrder(formData, productInfo) {
     // Handle success
     console.log("Draft order created successfully:", data);
     
-    // Create success message with stocking number if available
-    let successMessage = 'Your reservation has been submitted successfully!';
+    // Create success message with PO number and stocking number if available
+    let successMessage = '';
+    
+    // Add PO number to the message
+    if (data.po_number) {
+      successMessage += `Purchase Order #${data.po_number} created. `;
+    }
+    
+    // Add product information
     if (productInfo.stocking_number) {
-      successMessage = `Your reservation for ${productInfo.stocking_number.toUpperCase()} has been submitted successfully!`;
+      successMessage += `Your reservation for ${productInfo.stocking_number.toUpperCase()} has been submitted successfully!`;
+    } else {
+      successMessage += 'Your reservation has been submitted successfully!';
     }
     
     showMessage('success', successMessage);

@@ -120,12 +120,44 @@ export const handler = async function(event, context) {
       }
     }
     
-    // Add metadata for tracking and auditing
+    // Generate a purchase order (PO) number for this draft order
+    function generatePONumber() {
+      // Current date components for the PO prefix
+      const now = new Date();
+      const year = now.getFullYear().toString().substr(2, 2); // Last two digits of year
+      const month = (now.getMonth() + 1).toString().padStart(2, '0'); // Month (1-12), zero-padded
+      const day = now.getDate().toString().padStart(2, '0'); // Day of month, zero-padded
+      
+      // Random suffix (4 digits)
+      const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+      
+      // Combine to create PO number: PO-YYMMDD-XXXX
+      return `PO-${year}${month}${day}-${randomSuffix}`;
+    }
+    
+    // Add PO number to the draft order
+    const poNumber = generatePONumber();
+    console.log(`Generated PO number: ${poNumber}`);
+    
+    // Add the PO number as a note attribute
     draft_order.note_attributes = draft_order.note_attributes || [];
     draft_order.note_attributes.push(
-      { name: "app_source", value: "shopify_extension_app" },
-      { name: "created_at", value: new Date().toISOString() }
+      { name: "po_number", value: poNumber }
     );
+    
+    // Add PO to the beginning of the note
+    if (draft_order.note) {
+      draft_order.note = `PO Number: ${poNumber}\n\n${draft_order.note}`;
+    } else {
+      draft_order.note = `PO Number: ${poNumber}`;
+    }
+    
+    // Add PO number to tags for easy filtering
+    if (draft_order.tags) {
+      draft_order.tags = `${poNumber}, ${draft_order.tags}`;
+    } else {
+      draft_order.tags = poNumber;
+    }
     
     // Log the sanitized draft order (redacting sensitive info)
     const sanitizedDraftOrder = JSON.parse(JSON.stringify(draft_order));
@@ -146,20 +178,123 @@ export const handler = async function(event, context) {
       }
     );
     
-    // Get the admin URL for the draft order for easy access
-    const draftOrderId = response.data.draft_order.id;
-    const adminUrl = `https://${SHOP_DOMAIN}/admin/draft_orders/${draftOrderId}`;
-    
-    // Return successful response with admin URL
-    return {
-      statusCode: 200,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        success: true,
-        draft_order: response.data.draft_order,
-        admin_url: adminUrl
-      })
-    };
+    // After successfully creating the draft order, adjust inventory
+    try {
+      // Get the draft order details from the response
+      const draftOrderId = response.data.draft_order.id;
+      const adminUrl = `https://${SHOP_DOMAIN}/admin/draft_orders/${draftOrderId}`;
+      
+      // Check if we have line items with valid inventory_item_id
+      if (response.data.draft_order.line_items && 
+          response.data.draft_order.line_items.length > 0 &&
+          response.data.draft_order.line_items[0].variant_id) {
+        
+        const variantId = response.data.draft_order.line_items[0].variant_id;
+        console.log(`Found variant_id in draft order: ${variantId}`);
+        
+        // First, get the inventory_item_id for this variant
+        const inventoryResponse = await axios.get(
+          `https://${SHOP_DOMAIN}/admin/api/2023-04/variants/${variantId}.json`,
+          {
+            headers: {
+              'X-Shopify-Access-Token': ACCESS_TOKEN,
+              'Content-Type': 'application/json'
+            }
+          }
+        );
+        
+        if (inventoryResponse.data.variant && inventoryResponse.data.variant.inventory_item_id) {
+          const inventoryItemId = inventoryResponse.data.variant.inventory_item_id;
+          console.log(`Found inventory_item_id: ${inventoryItemId}`);
+          
+          // Get location ID (we'll use the first available location)
+          const locationsResponse = await axios.get(
+            `https://${SHOP_DOMAIN}/admin/api/2023-04/locations.json`,
+            {
+              headers: {
+                'X-Shopify-Access-Token': ACCESS_TOKEN,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          
+          if (locationsResponse.data.locations && locationsResponse.data.locations.length > 0) {
+            const locationId = locationsResponse.data.locations[0].id;
+            console.log(`Using location_id: ${locationId}`);
+            
+        // Adjust inventory level (decrease by 1)
+        try {
+          console.log("Attempting to adjust inventory with parameters:", {
+            inventory_item_id: inventoryItemId,
+            location_id: locationId,
+            available_adjustment: -1
+          });
+          
+          const adjustmentResponse = await axios.post(
+            `https://${SHOP_DOMAIN}/admin/api/2023-04/inventory_levels/adjust.json`,
+            {
+              inventory_item_id: inventoryItemId,
+              location_id: locationId,
+              available_adjustment: -1 // Decrease inventory by 1
+            },
+            {
+              headers: {
+                'X-Shopify-Access-Token': ACCESS_TOKEN,
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          
+          console.log("Inventory adjustment response:", adjustmentResponse.data);
+          console.log("Inventory reduced by 1 unit");
+        } catch (adjustError) {
+          console.error("Error adjusting inventory:", {
+            message: adjustError.message,
+            status: adjustError.response ? adjustError.response.status : 'unknown',
+            data: adjustError.response ? adjustError.response.data : 'unknown',
+            headers: adjustError.response && adjustError.response.headers ? {
+              'x-shopify-shop-api-call-limit': adjustError.response.headers['x-shopify-shop-api-call-limit']
+            } : 'unknown'
+          });
+          throw adjustError; // Re-throw to be caught by the outer catch block
+        }
+          } else {
+            console.log("No locations found for inventory adjustment");
+          }
+        } else {
+          console.log("Could not find inventory_item_id for variant");
+        }
+      } else {
+        console.log("No valid variant_id found in draft order");
+      }
+      
+      // Return successful response
+      return {
+        statusCode: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          success: true,
+          draft_order: response.data.draft_order,
+          admin_url: adminUrl,
+          inventory_adjusted: true
+        })
+      };
+    } catch (adjustmentError) {
+      console.error("Error adjusting inventory:", adjustmentError);
+      
+      // Still return success for the draft order creation, but flag that inventory wasn't adjusted
+      return {
+        statusCode: 200,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          success: true,
+          draft_order: response.data.draft_order,
+          admin_url: `https://${SHOP_DOMAIN}/admin/draft_orders/${response.data.draft_order.id}`,
+          inventory_adjusted: false,
+          inventory_error: adjustmentError.message
+        })
+      };
+    }
   } catch (error) {
     console.error("Error creating draft order:", error);
     
