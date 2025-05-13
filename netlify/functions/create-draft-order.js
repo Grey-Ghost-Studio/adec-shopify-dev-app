@@ -70,47 +70,54 @@ export const handler = async function(event, context) {
       };
     }
     
-    // Process and enhance draft order with product information
-    try {
-      if (draft_order.line_items && Array.isArray(draft_order.line_items)) {
-        console.log(`Processing ${draft_order.line_items.length} line items with product info`);
+    // Process line items to ensure proper product linking
+    if (draft_order.line_items && Array.isArray(draft_order.line_items)) {
+      console.log(`Processing ${draft_order.line_items.length} line items`);
+      
+      for (let i = 0; i < draft_order.line_items.length; i++) {
+        const item = draft_order.line_items[i];
         
-        // Extract product properties and handle variant data
-        for (let i = 0; i < draft_order.line_items.length; i++) {
-          const item = draft_order.line_items[i];
-          console.log("Processing line item:", JSON.stringify(item));
-          
-          // Ensure required fields are present
-          if (!item.title) {
-            console.log("Line item missing title, adding placeholder");
-            item.title = "Product Reservation";
-          }
-          
-          // Ensure price is properly formatted
-          if (item.price) {
-            // If price is not a string, convert it to string with 2 decimal places
-            if (typeof item.price !== 'string') {
-              item.price = item.price.toFixed(2);
-            }
-            console.log(`Setting price for line item: ${item.price}`);
-          }
-          
-          // Properly format custom properties
-          if (item.properties && Array.isArray(item.properties)) {
-            // Validate each property has required name/value pair
-            item.properties = item.properties.filter(prop => 
-              prop && typeof prop === 'object' && prop.name && prop.value !== undefined
-            );
-            
-            console.log(`Line item has ${item.properties.length} properties`);
-          }
+        // Ensure price is formatted as a string with 2 decimal places
+        if (item.price && typeof item.price !== 'string') {
+          item.price = item.price.toFixed(2);
         }
-      } else {
-        console.log("No line items found in draft order or incorrect format");
+        
+        // Ensure product_id and variant_id are properly formatted as numbers
+        if (item.product_id) {
+          if (typeof item.product_id === 'string') {
+            // Check if it's a Shopify GraphQL ID format (gid://shopify/Product/123456789)
+            if (item.product_id.includes('gid://')) {
+              item.product_id = parseInt(item.product_id.split('/').pop(), 10);
+            } else {
+              item.product_id = parseInt(item.product_id, 10);
+            }
+          }
+          console.log(`Line item ${i + 1} product_id processed: ${item.product_id}`);
+        }
+        
+        if (item.variant_id) {
+          if (typeof item.variant_id === 'string') {
+            // Check if it's a Shopify GraphQL ID format (gid://shopify/ProductVariant/123456789)
+            if (item.variant_id.includes('gid://')) {
+              item.variant_id = parseInt(item.variant_id.split('/').pop(), 10);
+            } else {
+              item.variant_id = parseInt(item.variant_id, 10);
+            }
+          }
+          console.log(`Line item ${i + 1} variant_id processed: ${item.variant_id}`);
+        }
+        
+        // Log the full line item details for debugging
+        console.log(`Line item ${i + 1} details:`, {
+          title: item.title,
+          product_id: item.product_id || 'None',
+          variant_id: item.variant_id || 'None',
+          price: item.price,
+          quantity: item.quantity,
+          sku: item.sku || 'None',
+          properties: item.properties || 'None'
+        });
       }
-    } catch (error) {
-      console.error("Error processing line items:", error);
-      // Continue processing even if there's an error with line items
     }
     
     // Add metadata for tracking and auditing
