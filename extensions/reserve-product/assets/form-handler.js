@@ -19,6 +19,11 @@ document.addEventListener('DOMContentLoaded', function() {
         role: document.getElementById('role').value
       };
       
+      // Capitalize role
+      if (formData.role) {
+        formData.role = formData.role.charAt(0).toUpperCase() + formData.role.slice(1);
+      }
+      
       // Get product information from meta tags or product JSON
       const productInfo = getProductInfo();
       
@@ -49,9 +54,6 @@ function getProductInfo() {
     if (productJson && productJson.textContent) {
       console.log("Found product JSON in page");
       const product = JSON.parse(productJson.textContent);
-      
-      // Log product JSON for debugging
-      console.log("Raw product JSON:", JSON.stringify(product, null, 2));
       
       productInfo.id = product.id;
       productInfo.title = product.title;
@@ -96,82 +98,20 @@ function getProductInfo() {
         productInfo.price = (product.price / 100).toFixed(2);
       }
     } else {
-      // Method 2: Try to find the product ID in other ways
+      console.log("No product JSON found, trying alternative methods");
       
-      // Try to get product ID from a form with product ID
-      const productForm = document.querySelector('form[action*="/cart/add"]');
-      if (productForm) {
-        const productInput = productForm.querySelector('input[name="id"]');
-        if (productInput) {
-          productInfo.variant_id = productInput.value;
-          console.log(`Found variant ID in product form: ${productInfo.variant_id}`);
-          
-          // Try to extract product ID from data attributes
-          if (productForm.hasAttribute('data-product-id')) {
-            productInfo.id = productForm.getAttribute('data-product-id');
-            console.log(`Found product ID in form attribute: ${productInfo.id}`);
-          }
-        }
-      }
-      
-      // Try to get product info from meta tags
+      // Method 2: Try to get product info from meta tags
       const productIdMeta = document.querySelector('meta[property="product:product_id"]');
       const productTitle = document.querySelector('meta[property="og:title"]');
       
-      if (productIdMeta) {
-        productInfo.id = productIdMeta.content;
-        console.log(`Found product ID in meta tag: ${productInfo.id}`);
-      }
+      if (productIdMeta) productInfo.id = productIdMeta.content;
       if (productTitle) productInfo.title = productTitle.content;
       
-      // Look for product info in Shopify.product object if it exists
-      if (window.Shopify && window.Shopify.product) {
-        const shopifyProduct = window.Shopify.product;
-        console.log("Found Shopify.product:", shopifyProduct);
-        
-        if (!productInfo.id && shopifyProduct.id) {
-          productInfo.id = shopifyProduct.id;
-          console.log(`Found product ID in Shopify.product: ${productInfo.id}`);
-        }
-        
-        if (!productInfo.title && shopifyProduct.title) {
-          productInfo.title = shopifyProduct.title;
-        }
-        
-        if (shopifyProduct.handle) {
-          productInfo.handle = shopifyProduct.handle;
-          console.log(`Found product handle in Shopify.product: ${productInfo.handle}`);
-          
-          // Check if handle looks like a stocking number (starts with R followed by numbers)
-          if (shopifyProduct.handle.match(/^[Rr][0-9]+$/)) {
-            productInfo.stocking_number = shopifyProduct.handle;
-            console.log(`Using handle as stocking number: ${productInfo.stocking_number}`);
-          }
-        }
-        
-        if (shopifyProduct.variants && shopifyProduct.variants.length > 0) {
-          const firstVariant = shopifyProduct.variants[0];
-          
-          if (!productInfo.variant_id) {
-            productInfo.variant_id = firstVariant.id;
-            console.log(`Found variant ID in Shopify.product: ${productInfo.variant_id}`);
-          }
-          
-          if (firstVariant.price) {
-            productInfo.price = (parseFloat(firstVariant.price) / 100).toFixed(2);
-          }
-          
-          if (firstVariant.sku) {
-            productInfo.sku = firstVariant.sku;
-          }
-        }
-      }
-      
-      // Try to get stocking number from DOM element
+      // Method 3: Try to get stocking number from DOM element
       const stockingNumberElement = document.querySelector('[data-stocking-number]');
       if (stockingNumberElement) {
         productInfo.stocking_number = stockingNumberElement.getAttribute('data-stocking-number') || 
-                                     stockingNumberElement.textContent.trim();
+                                      stockingNumberElement.textContent.trim();
       } else {
         // Alternative method to find stocking number in the DOM
         // Look for it in the page content
@@ -189,7 +129,7 @@ function getProductInfo() {
         }
       }
       
-      // Try to get price from the page elements
+      // Method 4: Try to get price from the page elements
       const priceElement = document.querySelector('[data-product-price]');
       if (priceElement) {
         const price = priceElement.getAttribute('data-product-price') || priceElement.textContent;
@@ -202,7 +142,7 @@ function getProductInfo() {
         }
       }
       
-      // Try to get product info from current URL
+      // Method 5: Try to get product info from current URL
       try {
         const pathParts = window.location.pathname.split('/');
         const productsIndex = pathParts.indexOf('products');
@@ -229,6 +169,65 @@ function getProductInfo() {
       }
     }
     
+    // Try to get product ID from a form with product ID
+    const productForm = document.querySelector('form[action*="/cart/add"]');
+    if (productForm) {
+      const productInput = productForm.querySelector('input[name="id"]');
+      if (productInput) {
+        productInfo.variant_id = productInput.value;
+        console.log(`Found variant ID in product form: ${productInfo.variant_id}`);
+        
+        // Try to extract product ID from data attributes
+        if (productForm.hasAttribute('data-product-id')) {
+          productInfo.id = productForm.getAttribute('data-product-id');
+          console.log(`Found product ID in form attribute: ${productInfo.id}`);
+        }
+      }
+    }
+
+    // Look for product info in Shopify.product object if it exists
+    if (window.Shopify && window.Shopify.product) {
+      const shopifyProduct = window.Shopify.product;
+      console.log("Found Shopify.product:", shopifyProduct);
+      
+      if (!productInfo.id && shopifyProduct.id) {
+        productInfo.id = shopifyProduct.id;
+        console.log(`Found product ID in Shopify.product: ${productInfo.id}`);
+      }
+      
+      if (!productInfo.title && shopifyProduct.title) {
+        productInfo.title = shopifyProduct.title;
+      }
+      
+      if (shopifyProduct.handle) {
+        productInfo.handle = shopifyProduct.handle;
+        console.log(`Found product handle in Shopify.product: ${productInfo.handle}`);
+        
+        // Check if handle looks like a stocking number (starts with R followed by numbers)
+        if (shopifyProduct.handle.match(/^[Rr][0-9]+$/)) {
+          productInfo.stocking_number = shopifyProduct.handle;
+          console.log(`Using handle as stocking number: ${productInfo.stocking_number}`);
+        }
+      }
+      
+      if (shopifyProduct.variants && shopifyProduct.variants.length > 0) {
+        const firstVariant = shopifyProduct.variants[0];
+        
+        if (!productInfo.variant_id) {
+          productInfo.variant_id = firstVariant.id;
+          console.log(`Found variant ID in Shopify.product: ${productInfo.variant_id}`);
+        }
+        
+        if (firstVariant.price) {
+          productInfo.price = (parseFloat(firstVariant.price) / 100).toFixed(2);
+        }
+        
+        if (firstVariant.sku) {
+          productInfo.sku = firstVariant.sku;
+        }
+      }
+    }
+
     // Clean up IDs - ensure they're numeric and not in Shopify GraphQL format
     if (productInfo.id) {
       if (typeof productInfo.id === 'string' && productInfo.id.includes('gid://')) {
@@ -244,6 +243,12 @@ function getProductInfo() {
       } else if (typeof productInfo.variant_id === 'string') {
         productInfo.variant_id = parseInt(productInfo.variant_id, 10);
       }
+    }
+
+    // Use the handle as stocking number if it follows the pattern and we don't have one already
+    if (!productInfo.stocking_number && productInfo.handle && productInfo.handle.match(/^[Rr][0-9]+$/)) {
+      productInfo.stocking_number = productInfo.handle;
+      console.log(`Using handle as stocking number: ${productInfo.stocking_number}`);
     }
     
     console.log("Final product info:", productInfo);
@@ -287,12 +292,6 @@ function createDraftOrder(formData, productInfo) {
   // Show loading state
   toggleLoadingState(true);
   
-  // Use the handle as stocking number if it follows the pattern and we don't have one already
-  if (!productInfo.stocking_number && productInfo.handle && productInfo.handle.match(/^[Rr][0-9]+$/)) {
-    productInfo.stocking_number = productInfo.handle;
-    console.log(`Using handle as stocking number: ${productInfo.stocking_number}`);
-  }
-  
   // Create custom draft order title with stocking number and practice name
   let draftOrderTitle = '';
   
@@ -311,7 +310,7 @@ function createDraftOrder(formData, productInfo) {
   const lineItem = {
     title: productInfo.stocking_number ? 
       `${productInfo.stocking_number.toUpperCase()} - ${productInfo.title || 'Product'}` : 
-      productInfo.title || `Reservation for ${formData.practice_name}`,
+      productInfo.title || `Reserved Product`,
     price: productInfo.price || '0.00',
     quantity: 1
   };
@@ -343,12 +342,8 @@ function createDraftOrder(formData, productInfo) {
     lineItem.sku = productInfo.sku;
   }
   
-  // Add line item properties for practice info and product details
-  lineItem.properties = [
-    { name: "Practice Name", value: formData.practice_name }
-  ];
-  
   // Add stocking number as a property if available
+  lineItem.properties = [];
   if (productInfo.stocking_number) {
     lineItem.properties.push({ name: "Stocking Number", value: productInfo.stocking_number.toUpperCase() });
   }
@@ -370,19 +365,14 @@ function createDraftOrder(formData, productInfo) {
     orderTags.push(formData.zip_code);
   }
   
-  // Create draft order note with stocking number prominently displayed
+  // Create draft order note with customer information (simplified format)
   let orderNote = '';
   
-  // Add stocking number as the first line if available
-  if (productInfo.stocking_number) {
-    orderNote += `STOCKING NUMBER: ${productInfo.stocking_number.toUpperCase()}\n\n`;
-  }
-  
-  // Add other information
+  // Add customer information directly without headers
   orderNote += `Practice Name: ${formData.practice_name}\n`;
+  orderNote += `Email: ${formData.email}\n`;
   orderNote += `ZIP/Postal Code: ${formData.zip_code}\n`;
   orderNote += `Role: ${formData.role}\n`;
-  orderNote += `Product: ${productInfo.title || 'N/A'}\n`;
   
   // Create the draft order data structure
   const draftOrderData = {
@@ -394,25 +384,6 @@ function createDraftOrder(formData, productInfo) {
       tags: orderTags.join(', ')
     }
   };
-  
-  // Add stocking number if available
-  if (productInfo.stocking_number) {
-    lineItem.properties.push({ name: "Stocking Number", value: productInfo.stocking_number });
-  }
-  
-  // Add product ID if available
-  if (productInfo.id) {
-    lineItem.properties.push({ name: "Product ID", value: productInfo.id });
-  }
-  
-  // Add variant details if available
-  if (productInfo.variant_id) {
-    lineItem.properties.push({ name: "Variant ID", value: productInfo.variant_id });
-    
-    if (productInfo.variant_title) {
-      lineItem.properties.push({ name: "Variant", value: productInfo.variant_title });
-    }
-  }
   
   console.log("Sending draft order data:", JSON.stringify(draftOrderData));
   
@@ -439,25 +410,146 @@ function createDraftOrder(formData, productInfo) {
   })
   .then(data => {
     // Handle success
-    console.log("Draft order created successfully:", data);
+    console.log("Draft order created successfully!");
+    // CRITICAL DEBUG: Log the full response data
+    console.log("FULL RESPONSE DATA:", JSON.stringify(data, null, 2));
     
-    // Create success message with PO number and stocking number if available
-    let successMessage = '';
+    // Create URL for the theme-based confirmation page
+    const confirmationUrl = new URL("/pages/reservation-confirmation", window.location.origin);
     
-    // Add PO number to the message
-    if (data.po_number) {
-      successMessage += `Purchase Order #${data.po_number} created. `;
+    // Check if we have a valid reservation number
+    console.log("Looking for reservation number in response data...");
+    
+    // Search all possible locations for reservation number
+    const possibleFields = [
+      { path: 'reservation_number', label: 'reservation_number' },
+      { path: 'draft_order.note_attributes', label: 'draft_order.note_attributes (reservation_number)', 
+        transform: attrs => {
+          if (!Array.isArray(attrs)) return null;
+          const resAttr = attrs.find(a => a.name === 'reservation_number');
+          return resAttr ? resAttr.value : null;
+        }}
+    ];
+    
+    // Helper to get nested value from path
+    function getNestedValue(obj, path) {
+      return path.split('.').reduce((o, p) => o && o[p] !== undefined ? o[p] : null, obj);
     }
     
-    // Add product information
-    if (productInfo.stocking_number) {
-      successMessage += `Your reservation for ${productInfo.stocking_number.toUpperCase()} has been submitted successfully!`;
-    } else {
-      successMessage += 'Your reservation has been submitted successfully!';
+    // Try each possible field
+    let reservationNumber = null;
+    for (const field of possibleFields) {
+      let value;
+      if (field.transform) {
+        value = field.transform(getNestedValue(data, field.path));
+      } else {
+        value = getNestedValue(data, field.path);
+      }
+      
+      // Skip if value is not found
+      if (!value) {
+        console.log(`- ${field.label}: Not found`);
+        continue;
+      }
+      
+      console.log(`- ${field.label}: Found value "${value}"`);
+      reservationNumber = value;
+      break;
     }
     
-    showMessage('success', successMessage);
-    document.querySelector('.reserve__form').reset();
+    // If no valid number found, generate a fallback
+    if (!reservationNumber) {
+      console.warn("⚠️ Could not find reservation number in any expected field!");
+      const now = new Date();
+      const timestamp = now.getTime().toString().slice(-6);
+      reservationNumber = `TEMP-${timestamp}`;
+      console.log(`Generated temporary reservation number: ${reservationNumber}`);
+    }
+    
+    // Log draft order details
+    if (data && data.draft_order) {
+      const draftOrder = data.draft_order;
+      console.log("Draft order details:");
+      console.log("- ID:", draftOrder.id);
+      console.log("- Name:", draftOrder.name);
+      console.log("- Order Number:", draftOrder.order_number);
+      console.log("- Number:", draftOrder.number);
+      
+      // Log important: Don't use the Shopify draft order number
+      if (draftOrder.name && draftOrder.name.startsWith('#D')) {
+        console.log("WARNING: Don't use Shopify generated order name:", draftOrder.name);
+      }
+    }
+    
+    // Ensure we have a clean string value that's not Shopify's auto-generated number
+    reservationNumber = String(reservationNumber).trim();
+    
+    // Make sure we're not using Shopify's auto-generated number
+    if (reservationNumber.startsWith('#D')) {
+      console.log("Detected Shopify auto-generated number, replacing with our reservation number");
+      
+      // Get reservation number from note attributes if possible
+      if (data && data.draft_order && data.draft_order.note_attributes) {
+        const resAttr = data.draft_order.note_attributes.find(attr => attr.name === 'reservation_number');
+        if (resAttr && resAttr.value) {
+          reservationNumber = resAttr.value;
+          console.log("Found reservation number in note attributes:", reservationNumber);
+        } else {
+          // Generate a fallback
+          const now = new Date();
+          const timestamp = now.getTime().toString().slice(-6);
+          reservationNumber = `RES-TEMP-${timestamp}`;
+          console.log("Generated fallback reservation number:", reservationNumber);
+        }
+      }
+    }
+    
+    console.log("Final reservation number:", reservationNumber);
+    
+    // Format stocking number
+    console.log("Raw productInfo:", JSON.stringify(productInfo, null, 2));
+    
+    let stockingNumber = '';
+    if (productInfo) {
+      if (productInfo.stocking_number) {
+        stockingNumber = productInfo.stocking_number.toString().toUpperCase();
+      } else if (productInfo.handle && productInfo.handle.match(/^[Rr][0-9]+$/)) {
+        // Use handle as stocking number if it looks like one
+        stockingNumber = productInfo.handle.toUpperCase();
+      }
+    }
+    
+    console.log("Formatted stocking number:", stockingNumber);
+    
+    // Add all parameters individually with explicit console logging
+    console.log("Adding parameters to URL:");
+    
+    confirmationUrl.searchParams.append('reservation_number', reservationNumber);
+    console.log("- reservation_number:", reservationNumber);
+    
+    confirmationUrl.searchParams.append('stocking_number', stockingNumber);
+    console.log("- stocking_number:", stockingNumber);
+    
+    confirmationUrl.searchParams.append('practice_name', formData.practice_name || '');
+    console.log("- practice_name:", formData.practice_name || '');
+    
+    confirmationUrl.searchParams.append('email', formData.email || '');
+    console.log("- email:", formData.email || '');
+    
+    confirmationUrl.searchParams.append('zip_code', formData.zip_code || '');
+    console.log("- zip_code:", formData.zip_code || '');
+    
+    confirmationUrl.searchParams.append('role', formData.role || '');
+    console.log("- role:", formData.role || '');
+    
+    confirmationUrl.searchParams.append('product_title', productInfo.title || '');
+    console.log("- product_title:", productInfo.title || '');
+    
+    // Log the final URL
+    console.log("Redirecting to confirmation page:", confirmationUrl.toString());
+    
+    // Redirect to the confirmation page
+    window.location.href = confirmationUrl.toString();
   })
   .catch(error => {
     // Handle error
