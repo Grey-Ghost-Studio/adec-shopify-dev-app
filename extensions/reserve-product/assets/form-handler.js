@@ -59,6 +59,12 @@ function getProductInfo() {
       productInfo.title = product.title;
       productInfo.handle = product.handle;
       
+      console.log("Product JSON data:", {
+        id: product.id,
+        title: product.title,
+        variants_count: product.variants ? product.variants.length : 0
+      });
+      
       // Try to get stocking number from metafields if available in JSON
       if (product.metafields && product.metafields.custom && product.metafields.custom.stocking_number) {
         productInfo.stocking_number = product.metafields.custom.stocking_number;
@@ -91,6 +97,12 @@ function getProductInfo() {
           productInfo.price = (selectedVariant.price / 100).toFixed(2); // Convert cents to dollars
           productInfo.sku = selectedVariant.sku;
           
+          // Make sure we have the product ID from the variant's product_id if available
+          if (!productInfo.id && selectedVariant.product_id) {
+            productInfo.id = selectedVariant.product_id;
+            console.log(`Using product ID from variant: ${productInfo.id}`);
+          }
+          
           console.log(`Using variant: ID=${selectedVariant.id}, Price=${productInfo.price}, SKU=${productInfo.sku}`);
         }
       } else if (product.price !== undefined) {
@@ -104,7 +116,11 @@ function getProductInfo() {
       const productIdMeta = document.querySelector('meta[property="product:product_id"]');
       const productTitle = document.querySelector('meta[property="og:title"]');
       
-      if (productIdMeta) productInfo.id = productIdMeta.content;
+      if (productIdMeta) {
+        productInfo.id = productIdMeta.content;
+        console.log(`Found product ID in meta tag: ${productInfo.id}`);
+      }
+      
       if (productTitle) productInfo.title = productTitle.content;
       
       // Method 3: Try to get stocking number from DOM element
@@ -228,10 +244,19 @@ function getProductInfo() {
       }
     }
 
+    // If we have a variant ID but no product ID, try to determine the product ID from the page
+    if (!productInfo.id && productInfo.variant_id) {
+      console.log(`Have variant ID (${productInfo.variant_id}) but no product ID, will rely on server to look up product ID`);
+      
+      // We'll pass the variant ID to the server and let it look up the product ID
+      // This is handled in create-draft-order.js
+    }
+
     // Clean up IDs - ensure they're numeric and not in Shopify GraphQL format
     if (productInfo.id) {
       if (typeof productInfo.id === 'string' && productInfo.id.includes('gid://')) {
         productInfo.id = productInfo.id.split('/').pop();
+        console.log(`Extracted numeric ID from GraphQL ID: ${productInfo.id}`);
       } else if (typeof productInfo.id === 'string') {
         productInfo.id = parseInt(productInfo.id, 10);
       }
@@ -240,6 +265,7 @@ function getProductInfo() {
     if (productInfo.variant_id) {
       if (typeof productInfo.variant_id === 'string' && productInfo.variant_id.includes('gid://')) {
         productInfo.variant_id = productInfo.variant_id.split('/').pop();
+        console.log(`Extracted numeric variant ID from GraphQL ID: ${productInfo.variant_id}`);
       } else if (typeof productInfo.variant_id === 'string') {
         productInfo.variant_id = parseInt(productInfo.variant_id, 10);
       }
@@ -251,7 +277,7 @@ function getProductInfo() {
       console.log(`Using handle as stocking number: ${productInfo.stocking_number}`);
     }
     
-    console.log("Final product info:", productInfo);
+    console.log("Final product info:", JSON.stringify(productInfo, null, 2));
   } catch (error) {
     console.error('Error getting product info:', error);
   }
@@ -385,7 +411,7 @@ function createDraftOrder(formData, productInfo) {
     }
   };
   
-  console.log("Sending draft order data:", JSON.stringify(draftOrderData));
+  console.log("Sending draft order data:", JSON.stringify(draftOrderData, null, 2));
   
   // Get the shop domain and create the app proxy URL
   const shopDomain = Shopify.shop || window.location.hostname;
@@ -481,6 +507,15 @@ function createDraftOrder(formData, productInfo) {
       }
     }
     
+    // Check for product metafield update status
+    console.log("Checking metafield update status:");
+    console.log("- product_status_updated:", data.product_status_updated);
+    console.log("- metafield_result:", data.metafield_result);
+    if (data.metafield_result) {
+      console.log("  - is_reserved:", data.metafield_result.is_reserved);
+      console.log("  - reservation_number:", data.metafield_result.reservation_number);
+    }
+    
     // Ensure we have a clean string value that's not Shopify's auto-generated number
     reservationNumber = String(reservationNumber).trim();
     
@@ -544,6 +579,12 @@ function createDraftOrder(formData, productInfo) {
     
     confirmationUrl.searchParams.append('product_title', productInfo.title || '');
     console.log("- product_title:", productInfo.title || '');
+    
+    // Add metafield status if available
+    if (data.product_status_updated !== undefined) {
+      confirmationUrl.searchParams.append('product_updated', data.product_status_updated ? 'true' : 'false');
+      console.log("- product_updated:", data.product_status_updated ? 'true' : 'false');
+    }
     
     // Log the final URL
     console.log("Redirecting to confirmation page:", confirmationUrl.toString());

@@ -70,6 +70,9 @@ export const handler = async function(event, context) {
       };
     }
     
+    // Get product ID from line items if available
+    let productId = null;
+    
     // Process line items to ensure proper product linking
     if (draft_order.line_items && Array.isArray(draft_order.line_items)) {
       console.log(`Processing ${draft_order.line_items.length} line items`);
@@ -77,47 +80,53 @@ export const handler = async function(event, context) {
       for (let i = 0; i < draft_order.line_items.length; i++) {
         const item = draft_order.line_items[i];
         
-        // Ensure price is formatted as a string with 2 decimal places
-        if (item.price && typeof item.price !== 'string') {
-          item.price = item.price.toFixed(2);
-        }
-        
-        // Ensure product_id and variant_id are properly formatted as numbers
-        if (item.product_id) {
-          if (typeof item.product_id === 'string') {
-            // Check if it's a Shopify GraphQL ID format (gid://shopify/Product/123456789)
-            if (item.product_id.includes('gid://')) {
-              item.product_id = parseInt(item.product_id.split('/').pop(), 10);
+        // If we have variant_id but no product_id, look up the product
+        if (item.variant_id && (!item.product_id || item.product_id === 'None')) {
+          try {
+            console.log(`Looking up product ID for variant ${item.variant_id}...`);
+            const variantResponse = await axios.get(
+              `https://${SHOP_DOMAIN}/admin/api/2023-04/variants/${item.variant_id}.json`,
+              {
+                headers: {
+                  'X-Shopify-Access-Token': ACCESS_TOKEN
+                }
+              }
+            );
+            
+            if (variantResponse.data.variant && variantResponse.data.variant.product_id) {
+              const foundProductId = variantResponse.data.variant.product_id;
+              console.log(`Found product ID: ${foundProductId} for variant ${item.variant_id}`);
+              
+              // Update both the line item and the global productId variable
+              item.product_id = foundProductId;
+              productId = foundProductId;
             } else {
-              item.product_id = parseInt(item.product_id, 10);
+              console.log("Variant found but no product_id in the response");
+            }
+          } catch (error) {
+            console.error(`Error looking up product for variant ${item.variant_id}:`, error.message);
+            if (error.response) {
+              console.error("Response data:", JSON.stringify(error.response.data));
             }
           }
-          console.log(`Line item ${i + 1} product_id processed: ${item.product_id}`);
         }
         
-        if (item.variant_id) {
-          if (typeof item.variant_id === 'string') {
-            // Check if it's a Shopify GraphQL ID format (gid://shopify/ProductVariant/123456789)
-            if (item.variant_id.includes('gid://')) {
-              item.variant_id = parseInt(item.variant_id.split('/').pop(), 10);
-            } else {
-              item.variant_id = parseInt(item.variant_id, 10);
-            }
-          }
-          console.log(`Line item ${i + 1} variant_id processed: ${item.variant_id}`);
-        }
-        
-        // Log the full line item details for debugging
-        console.log(`Line item ${i + 1} details:`, {
+        // Log the updated line item details
+        console.log(`Line item ${i + 1} details after processing:`, {
           title: item.title,
           product_id: item.product_id || 'None',
           variant_id: item.variant_id || 'None',
           price: item.price,
-          quantity: item.quantity,
-          sku: item.sku || 'None',
-          properties: item.properties || 'None'
+          quantity: item.quantity
         });
       }
+    }
+
+    // After processing, log the product ID status
+    if (productId) {
+      console.log(`Will update metafields for product ID: ${productId}`);
+    } else {
+      console.log("WARNING: No product ID found. Metafields cannot be updated!");
     }
     
     // Generate a Reservation number
@@ -145,7 +154,6 @@ export const handler = async function(event, context) {
       : '[No email provided]';
     
     // Prepend the reservation number to the note
-    // This keeps the format sent from form-handler.js
     if (draft_order.note) {
       draft_order.note = `Reservation Number: ${reservationNumber}\n\n${draft_order.note}`;
     } else {
@@ -182,11 +190,150 @@ export const handler = async function(event, context) {
     const draftOrderId = response.data.draft_order.id;
     const adminUrl = `https://${SHOP_DOMAIN}/admin/draft_orders/${draftOrderId}`;
     
-    // Create an enhanced response that includes the reservation number at the top level
-    const enhancedDraftOrder = {
-      ...response.data.draft_order,
-      // Add the reservation_number field directly in the draft order for easier access
+    // Set reserved metafield if we have a product ID
+    let metafieldResult = null;
+
+// Simplified approach focused on metafields only
+// Replace the product update section in create-draft-order.js with this
+
+// Set product as reserved using metafields only
+if (productId) {
+  try {
+    console.log(`Setting product ${productId} as reserved using metafields...`);
+    
+    // First ensure the product exists 
+    const productResponse = await axios.get(
+      `https://${SHOP_DOMAIN}/admin/api/2023-04/products/${productId}.json`,
+      {
+        headers: {
+          'X-Shopify-Access-Token': ACCESS_TOKEN
+        }
+      }
+    );
+    
+    const product = productResponse.data.product;
+    console.log(`Product: "${product.title}" (ID: ${productId})`);
+    
+    // Check for existing metafields
+    const metafieldsResponse = await axios.get(
+      `https://${SHOP_DOMAIN}/admin/api/2023-04/products/${productId}/metafields.json`,
+      {
+        headers: {
+          'X-Shopify-Access-Token': ACCESS_TOKEN
+        }
+      }
+    );
+    
+    const existingMetafields = metafieldsResponse.data.metafields;
+    console.log(`Found ${existingMetafields.length} existing metafields`);
+    
+    // Functions for updating existing metafields
+    async function updateMetafield(metafieldId, value, type = 'single_line_text') {
+      console.log(`Updating metafield ${metafieldId} with value ${value}`);
+      
+      return axios.put(
+        `https://${SHOP_DOMAIN}/admin/api/2023-04/metafields/${metafieldId}.json`,
+        {
+          metafield: {
+            id: metafieldId,
+            value: value,
+            type: type
+          }
+        },
+        {
+          headers: {
+            'X-Shopify-Access-Token': ACCESS_TOKEN,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+    
+    async function createMetafield(namespace, key, value, type = 'single_line_text_field') {
+      console.log(`Creating metafield ${namespace}.${key} with value ${value}`);
+      
+      return axios.post(
+        `https://${SHOP_DOMAIN}/admin/api/2023-04/products/${productId}/metafields.json`,
+        {
+          metafield: {
+            namespace: namespace,
+            key: key,
+            value: value,
+            type: type
+          }
+        },
+        {
+          headers: {
+            'X-Shopify-Access-Token': ACCESS_TOKEN,
+            'Content-Type': 'application/json'
+          }
+        }
+      );
+    }
+    
+    // 1. Set the is_reserved metafield
+    const isReservedMetafield = existingMetafields.find(
+      m => m.namespace === 'custom' && m.key === 'is_reserved'
+    );
+    
+    if (isReservedMetafield) {
+      await updateMetafield(isReservedMetafield.id, 'true', 'boolean');
+    } else {
+      await createMetafield('custom', 'is_reserved', 'true', 'boolean');
+    }
+    
+    // 2. Set the reservation_number metafield
+    const reservationNumberMetafield = existingMetafields.find(
+      m => m.namespace === 'custom' && m.key === 'reservation_number'
+    );
+    
+    if (reservationNumberMetafield) {
+      await updateMetafield(reservationNumberMetafield.id, reservationNumber);
+    } else {
+      await createMetafield('custom', 'reservation_number', reservationNumber);
+    }
+    
+    // 3. Verify the metafields were set
+    const verifyResponse = await axios.get(
+      `https://${SHOP_DOMAIN}/admin/api/2023-04/products/${productId}/metafields.json`,
+      {
+        headers: {
+          'X-Shopify-Access-Token': ACCESS_TOKEN
+        }
+      }
+    );
+    
+    const updatedMetafields = verifyResponse.data.metafields;
+    
+    const updatedIsReservedMetafield = updatedMetafields.find(
+      m => m.namespace === 'custom' && m.key === 'is_reserved'
+    );
+    
+    const updatedReservationNumberMetafield = updatedMetafields.find(
+      m => m.namespace === 'custom' && m.key === 'reservation_number'
+    );
+    
+    console.log("VERIFICATION:");
+    console.log(`- is_reserved metafield: ${updatedIsReservedMetafield ? 'Found (' + updatedIsReservedMetafield.value + ')' : 'Not found'}`);
+    console.log(`- reservation_number metafield: ${updatedReservationNumberMetafield ? 'Found (' + updatedReservationNumberMetafield.value + ')' : 'Not found'}`);
+    
+    console.log(`Product successfully marked as reserved using metafields`);
+    
+    metafieldResult = {
+      is_reserved: updatedIsReservedMetafield ? updatedIsReservedMetafield.value : null,
       reservation_number: reservationNumber
+    };
+  } catch (error) {
+    console.error(`Error setting product as reserved:`, error);
+    metafieldResult = {
+      error: error.message
+    };
+  }
+}
+    
+    // Create an enhanced response
+    const enhancedDraftOrder = {
+      ...response.data.draft_order
     };
     
     // Log the final response with reservation number
@@ -195,15 +342,30 @@ export const handler = async function(event, context) {
       draft_order: { id: draftOrderId }
     });
       
-    // Return successful response with reservation number at multiple levels for redundancy
+    // Return successful response with enhanced debugging information
     return {
       statusCode: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         success: true,
-        reservation_number: reservationNumber, // Top level
-        draft_order: enhancedDraftOrder,       // Inside draft_order too
-        admin_url: adminUrl
+        reservation_number: reservationNumber,
+        draft_order: {
+          id: draftOrderId,
+          name: enhancedDraftOrder.name || "Draft Order",
+          admin_url: adminUrl
+        },
+        product_status_updated: metafieldResult ? true : false,
+        product_id: productId || 'Not found',
+        metafield_result: metafieldResult || {
+          error: "Metafield update was not attempted",
+          reason: productId ? "Unknown error" : "No product ID found"
+        },
+        debug_info: {
+          timestamp: new Date().toISOString(),
+          line_items_count: draft_order.line_items ? draft_order.line_items.length : 0,
+          product_id_found: !!productId,
+          metafields_updated: metafieldResult && !metafieldResult.error
+        }
       })
     };
   } catch (error) {
