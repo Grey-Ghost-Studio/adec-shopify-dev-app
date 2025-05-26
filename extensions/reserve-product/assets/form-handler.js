@@ -59,18 +59,32 @@ function getProductInfo() {
       productInfo.title = product.title;
       productInfo.handle = product.handle;
       
-      console.log("Product JSON data:", {
-        id: product.id,
-        title: product.title,
-        variants_count: product.variants ? product.variants.length : 0
-      });
-      
-      // Try to get stocking number from metafields if available in JSON
-      if (product.metafields && product.metafields.custom && product.metafields.custom.stocking_number) {
-        productInfo.stocking_number = product.metafields.custom.stocking_number;
+      // UPDATED: Try to get stocking number from custom metafields
+      if (product.metafields) {
+        // Check for stocking number in custom metafields
+        if (product.metafields.custom && product.metafields.custom.stocking_number) {
+          productInfo.stocking_number = product.metafields.custom.stocking_number;
+          console.log(`Found stocking number in custom metafields: ${productInfo.stocking_number}`);
+        }
+        // Also check other possible metafield structures
+        else if (product.metafields.global && product.metafields.global.stocking_number) {
+          productInfo.stocking_number = product.metafields.global.stocking_number;
+          console.log(`Found stocking number in global metafields: ${productInfo.stocking_number}`);
+        }
+        // Check if metafields is an array (older format)
+        else if (Array.isArray(product.metafields)) {
+          const stockingMetafield = product.metafields.find(mf => 
+            (mf.namespace === 'custom' || mf.namespace === 'global') && 
+            (mf.key === 'stocking_number' || mf.key === 'stocking-number')
+          );
+          if (stockingMetafield) {
+            productInfo.stocking_number = stockingMetafield.value;
+            console.log(`Found stocking number in metafields array: ${productInfo.stocking_number}`);
+          }
+        }
       }
       
-      // If no stocking number was found in metafields, try using the handle as stocking number
+      // If no stocking number was found in metafields, try using the handle as backup
       if (!productInfo.stocking_number && product.handle && product.handle.match(/^[Rr][0-9]+$/)) {
         productInfo.stocking_number = product.handle;
         console.log(`Using handle as stocking number: ${productInfo.stocking_number}`);
