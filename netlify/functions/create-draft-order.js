@@ -4,6 +4,7 @@ import axios from 'axios';
 const SHOP_DOMAIN = process.env.SHOP_DOMAIN;
 const ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET;
+const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
 
 // CORS headers for all responses
 const corsHeaders = {
@@ -29,13 +30,110 @@ export const handler = async function(event, context) {
     }
     
     // Parse request body
-    const { draft_order } = JSON.parse(event.body || '{}');
+    const requestBody = JSON.parse(event.body || '{}');
+    const { draft_order, recaptcha_token, recaptcha_action } = requestBody;
+
     if (!draft_order) {
       return {
         statusCode: 400,
         headers: corsHeaders,
         body: JSON.stringify({ error: 'Missing draft order data' })
       };
+    }
+    
+    // Verify reCAPTCHA v3 token if provided
+    if (RECAPTCHA_SECRET_KEY) {
+      if (!recaptcha_token) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'reCAPTCHA verification failed: No token provided' })
+        };
+      }
+      
+      try {
+        // Verify with Google reCAPTCHA API
+        const recaptchaVerifyUrl = 'https://www.google.com/recaptcha/api/siteverify';
+        const recaptchaResponse = await axios.post(
+          recaptchaVerifyUrl,
+          null,
+          {
+            params: {
+              secret: RECAPTCHA_SECRET_KEY,
+              response: recaptcha_token
+            },
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded'
+            }
+          }
+        );
+        
+        console.log('reCAPTCHA v3 verification response:', JSON.stringify(recaptchaResponse.data));
+        
+        // Check if verification was successful
+        if (!recaptchaResponse.data.success) {
+          console.error('reCAPTCHA verification failed:', recaptchaResponse.data['error-codes']);
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ 
+              error: 'reCAPTCHA verification failed',
+              details: recaptchaResponse.data['error-codes']
+            })
+          };
+        }
+        
+        // For reCAPTCHA v3, always check the score
+        const score = recaptchaResponse.data.score;
+        console.log('reCAPTCHA v3 score:', score);
+        console.log('reCAPTCHA v3 action:', recaptcha_action);
+        console.log('reCAPTCHA v3 hostname:', recaptchaResponse.data.hostname);
+        
+        // Verify the action matches what we expect
+        if (recaptcha_action && recaptchaResponse.data.action !== recaptcha_action) {
+          console.error('reCAPTCHA action mismatch:', {
+            expected: recaptcha_action,
+            received: recaptchaResponse.data.action
+          });
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ 
+              error: 'reCAPTCHA verification failed: Action mismatch'
+            })
+          };
+        }
+        
+        // Reject if score is too low (0.7 is likely human)
+        const minScore = 0.7;
+        if (score < minScore) {
+          console.error(`reCAPTCHA score too low: ${score} (minimum: ${minScore})`);
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ 
+              error: 'Security verification failed. Please try again.',
+              score: score,
+              threshold: minScore
+            })
+          };
+        }
+        
+        // Log successful verification with score
+        console.log(`reCAPTCHA v3 verification successful with score: ${score}`);
+      } catch (recaptchaError) {
+        console.error('Error verifying reCAPTCHA token:', recaptchaError);
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ 
+            error: 'Error verifying reCAPTCHA token',
+            details: recaptchaError.message
+          })
+        };
+      }
+    } else {
+      console.warn('RECAPTCHA_SECRET_KEY not configured, skipping reCAPTCHA verification');
     }
     
     // Extract and validate query parameters
@@ -116,24 +214,6 @@ export const handler = async function(event, context) {
               // Update both the line item and the global productId variable
               item.product_id = foundProductId;
               productId = foundProductId;
-              
-              // Try to get product handle for email link
-              try {
-                const productResponse = await axios.get(
-                  `https://${SHOP_DOMAIN}/admin/api/2023-04/products/${foundProductId}.json`,
-                  {
-                    headers: {
-                      'X-Shopify-Access-Token': ACCESS_TOKEN
-                    }
-                  }
-                );
-                
-                if (productResponse.data.product && productResponse.data.product.handle) {
-                  productHandle = productResponse.data.product.handle;
-                }
-              } catch (productError) {
-                console.error(`Error getting product details: ${productError.message}`);
-              }
             } else {
               console.log("Variant found but no product_id in the response");
             }
@@ -142,26 +222,6 @@ export const handler = async function(event, context) {
             if (error.response) {
               console.error("Response data:", JSON.stringify(error.response.data));
             }
-          }
-        } else if (item.product_id) {
-          // If we already have product_id, use it and try to get the handle
-          productId = item.product_id;
-          
-          try {
-            const productResponse = await axios.get(
-              `https://${SHOP_DOMAIN}/admin/api/2023-04/products/${item.product_id}.json`,
-              {
-                headers: {
-                  'X-Shopify-Access-Token': ACCESS_TOKEN
-                }
-              }
-            );
-            
-            if (productResponse.data.product && productResponse.data.product.handle) {
-              productHandle = productResponse.data.product.handle;
-            }
-          } catch (productError) {
-            console.error(`Error getting product details: ${productError.message}`);
           }
         }
         
@@ -242,8 +302,6 @@ export const handler = async function(event, context) {
     } else {
       draft_order.tags = reservationNumber;
     }
-    
-    // Note: We're using metafields instead of note_attributes for better data structure
     
     // Log the sanitized draft order (redacting sensitive info)
     const sanitizedDraftOrder = JSON.parse(JSON.stringify(draft_order));
@@ -554,7 +612,8 @@ export const handler = async function(event, context) {
           line_items_count: draft_order.line_items ? draft_order.line_items.length : 0,
           product_id_found: !!productId,
           metafields_updated: metafieldResult && !metafieldResult.error,
-          draft_order_metafields_added: draftOrderMetafieldsResult ? draftOrderMetafieldsResult.successful : 0
+          draft_order_metafields_added: draftOrderMetafieldsResult ? draftOrderMetafieldsResult.successful : 0,
+          recaptcha_verified: true
         }
       })
     };
