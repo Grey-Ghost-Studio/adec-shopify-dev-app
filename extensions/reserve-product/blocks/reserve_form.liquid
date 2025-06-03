@@ -22,7 +22,10 @@
         {{ block.settings.form_description }}
       {% endif %}
 
+
       <form class="reserve__form" onsubmit="return false;">
+        <p class="required-message">*Required fields</p>
+
         <div class="form-field is-required">
           <label for="practice_name">Practice name</label>
           <input type="text" id="practice_name" name="practice_name" required>

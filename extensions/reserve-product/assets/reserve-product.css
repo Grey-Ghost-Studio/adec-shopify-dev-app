@@ -13,6 +13,7 @@
 
 /* form styles */
 .reserve__form {
+    position: relative;
     margin: 0 auto;
     /* color: #003B5C; */
     h2 {
@@ -23,6 +24,15 @@
         content: "*";
         color: inherit;
     }
+}
+.required-message {
+    position: absolute;
+    top: 0;
+    right: 0;
+    color: #63666A;
+    font-style: italic;
+    text-align: right;
+    margin: 0;
 }
 .form-field {
     margin-bottom: 15px;
@@ -40,17 +50,21 @@
     border-radius: 4px;
     font-size: 16px;
 }
+.form-field input::placeholder {
+    color: #A5A5A5;
+}
 .form-field option:disabled {
     color: #12121261;
 }
 .submit-button {
     background-color: #0072CE;
     color: white;
-    padding: 12px 20px;
+    padding: 14px 24px;
     border: none;
     border-radius: 4px;
     font-size: 16px;
     cursor: pointer;
+    margin-top: 40px;;
 }
 
 
@@ -89,7 +103,7 @@
     display: block !important;
     position: absolute;
     inset: 0;
-    background-color: rgba(0, 0, 0, 0.6);
+    background-color: rgba(0, 0, 0, 0.25);
 }
 
 .reserve-modal__close {
