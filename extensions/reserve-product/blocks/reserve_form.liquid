@@ -13,7 +13,7 @@
     </button>
 
     <div class="reserve-modal__header">
-        <h2 class="reserve-title">{{ block.settings.form_title }} {{ product.metafields.custom.stocking_number }}</h2>
+        <h2 class="reserve-title">{{ block.settings.form_title }}</h2>
         <h3 class="reserve-price price price--large">{{ product.price | money_with_currency }}&nbsp;<span class="price-freight">+ Freight</span></h3>
     </div>
 
@@ -28,11 +28,11 @@
 
         <div class="form-field is-required">
           <label for="practice_name">Practice name</label>
-          <input type="text" id="practice_name" name="practice_name" required>
+          <input type="text" id="practice_name" name="practice_name" placeholder="e.g. Smile Dental" required>
         </div>
         
         <div class="form-field is-required">
-          <label for="zip_code">Practice ZIP/Postal Code</label>
+          <label for="zip_code">Practice ZIP/Postal code</label>
           <input type="text" id="zip_code" name="zip_code" pattern="[0-9]{5}" title="Please enter a valid 5-digit zip code" required>
         </div>
         
@@ -45,11 +45,9 @@
           <label for="role">Your role?</label>
           <select id="role" name="role" required>
             <option value="" disabled selected>&ndash;&nbsp;Select your role&nbsp;&ndash;</option>
-            <option value="doctor">Doctor</option>
-            <option value="nurse">Nurse</option>
-            <option value="administrator">Administrator</option>
-            <option value="receptionist">Receptionist</option>
-            <option value="other">Other</option>
+            <option value="doctor">Doctor or practice staff</option>
+            <option value="receptionist">A-dec dealer</option>
+            <option value="other">A-dec sale</option>
           </select>
         </div>
         

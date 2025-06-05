@@ -15,11 +15,6 @@
 .reserve__form {
     position: relative;
     margin: 0 auto;
-    /* color: #003B5C; */
-    h2 {
-        text-align: center;
-        margin-bottom: 20px;
-    }
     .form-field.is-required label:after {
         content: "*";
         color: inherit;
@@ -95,8 +90,13 @@
     overflow-y: auto;
     background-color: white;
     border-radius: 6px;
-    padding: 20px;
+    padding: 36px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.reserve-modal__body,
+.reserve-modal__body p {
+    color: #003B5C;
 }
 
 .reserve-modal__overlay {
