@@ -51,7 +51,7 @@
 .form-field option:disabled {
     color: #12121261;
 }
-.submit-button {
+.reserve__submit-button {
     background-color: #0072CE;
     color: white;
     padding: 14px 24px;
@@ -60,6 +60,10 @@
     font-size: 16px;
     cursor: pointer;
     margin-top: 40px;;
+    &.is-loading {
+        pointer-events: none;
+        opacity: 0.6;
+    }
 }
 
 

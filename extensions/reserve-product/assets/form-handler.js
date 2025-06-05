@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', function() {
   // Store original button text when page loads
-  const submitButton = document.querySelector('.submit-button');
+  const submitButton = document.querySelector('.reserve__submit-button');
   if (submitButton) {
     submitButton.setAttribute('data-original-text', submitButton.innerText);
   }
@@ -488,9 +488,10 @@ function createDraftOrder(formData, productInfo) {
   .catch(error => {
     console.error('Error creating draft order:', error);
     showMessage('error', 'There was an error submitting your reservation. Please try again.');
+    toggleLoadingState(false);
   })
   .finally(() => {
-    toggleLoadingState(false);
+    // toggleLoadingState(false);
   });
 }
 
@@ -498,7 +499,8 @@ function createDraftOrder(formData, productInfo) {
  * Toggles loading state on the submit button
  */
 function toggleLoadingState(isLoading) {
-  const submitButton = document.querySelector('.submit-button');
+  const submitButton = document.querySelector('.reserve__submit-button');
+  const submitButtonText = submitButton ? submitButton.innerText : '';
   if (!submitButton) return;
   
   if (isLoading) {
@@ -508,7 +510,7 @@ function toggleLoadingState(isLoading) {
   } else {
     submitButton.disabled = false;
     submitButton.classList.remove('is-loading');
-    submitButton.innerText = submitButton.getAttribute('data-original-text') || 'Submit';
+    submitButton.innerText = submitButtonText || 'Submit';
   }
 }
 
