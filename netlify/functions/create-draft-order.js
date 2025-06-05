@@ -183,7 +183,9 @@ export const handler = async function(event, context) {
         
         // Extract product title for email
         if (item.title) {
-          productTitle = item.title;
+          // productTitle = item.title;
+          productTitle = item.title.replace(/^R[A-Z0-9]+\s*-\s*/, '').trim();
+          console.log(`Product title cleaned: "${productTitle}" (from: "${item.title}")`);
         }
         
         // Extract stocking number from properties if available
@@ -510,8 +512,8 @@ export const handler = async function(event, context) {
         },
         {
           namespace: 'reservation',
-          key: 'product_handle',
-          value: productHandle,
+          key: 'product_title',
+          value: productTitle,
           type: 'single_line_text_field'
         },
         {
@@ -543,14 +545,14 @@ export const handler = async function(event, context) {
             }
           );
           
-          console.log(`✅ Created metafield: ${metafield.namespace}.${metafield.key} = ${metafield.value}`);
+          console.log(`✅ Created draft order metafield: ${metafield.namespace}.${metafield.key} = ${metafield.value}`);
           metafieldResults.push({
             key: `${metafield.namespace}.${metafield.key}`,
             value: metafield.value,
             success: true
           });
         } catch (metafieldError) {
-          console.error(`❌ Error creating metafield ${metafield.namespace}.${metafield.key}:`, metafieldError.message);
+          console.error(`❌ Error creating draft order metafield ${metafield.namespace}.${metafield.key}:`, metafieldError.message);
           metafieldResults.push({
             key: `${metafield.namespace}.${metafield.key}`,
             value: metafield.value,
