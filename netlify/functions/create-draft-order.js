@@ -3,6 +3,7 @@ import axios from 'axios';
 
 const SHOP_DOMAIN = process.env.SHOP_DOMAIN;
 const ACCESS_TOKEN = process.env.SHOPIFY_ACCESS_TOKEN;
+const API_VERSION = process.env.SHOPIFY_API_VERSION || '2025-01';  // Default fallback
 const SHOPIFY_API_SECRET = process.env.SHOPIFY_API_SECRET;
 const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
 
@@ -201,13 +202,15 @@ export const handler = async function(event, context) {
           try {
             console.log(`Looking up product ID for variant ${item.variant_id}...`);
             const variantResponse = await axios.get(
-              `https://${SHOP_DOMAIN}/admin/api/2023-04/variants/${item.variant_id}.json`,
+              `https://${SHOP_DOMAIN}/admin/api/${API_VERSION}/variants/${item.variant_id}.json`,
               {
                 headers: {
                   'X-Shopify-Access-Token': ACCESS_TOKEN
                 }
               }
             );
+
+            console.log(`Variant response for ${item.variant_id}:`, variantResponse.data);
             
             if (variantResponse.data.variant && variantResponse.data.variant.product_id) {
               const foundProductId = variantResponse.data.variant.product_id;
@@ -314,7 +317,7 @@ export const handler = async function(event, context) {
     
     // Make API call to create draft order
     const response = await axios.post(
-      `https://${SHOP_DOMAIN}/admin/api/2023-04/draft_orders.json`,
+      `https://${SHOP_DOMAIN}/admin/api/${API_VERSION}/draft_orders.json`,
       { draft_order },
       {
         headers: {
@@ -338,7 +341,7 @@ export const handler = async function(event, context) {
         
         // First ensure the product exists 
         const productResponse = await axios.get(
-          `https://${SHOP_DOMAIN}/admin/api/2023-04/products/${productId}.json`,
+          `https://${SHOP_DOMAIN}/admin/api/${API_VERSION}/products/${productId}.json`,
           {
             headers: {
               'X-Shopify-Access-Token': ACCESS_TOKEN
@@ -351,7 +354,7 @@ export const handler = async function(event, context) {
         
         // Check for existing metafields
         const metafieldsResponse = await axios.get(
-          `https://${SHOP_DOMAIN}/admin/api/2023-04/products/${productId}/metafields.json`,
+          `https://${SHOP_DOMAIN}/admin/api/${API_VERSION}/products/${productId}/metafields.json`,
           {
             headers: {
               'X-Shopify-Access-Token': ACCESS_TOKEN
@@ -363,11 +366,11 @@ export const handler = async function(event, context) {
         console.log(`Found ${existingMetafields.length} existing metafields`);
         
         // Functions for updating existing metafields
-        async function updateMetafield(metafieldId, value, type = 'single_line_text') {
+        async function updateMetafield(metafieldId, value, type = 'single_line_text_field') {
           console.log(`Updating metafield ${metafieldId} with value ${value}`);
           
           return axios.put(
-            `https://${SHOP_DOMAIN}/admin/api/2023-04/metafields/${metafieldId}.json`,
+            `https://${SHOP_DOMAIN}/admin/api/${API_VERSION}/metafields/${metafieldId}.json`,
             {
               metafield: {
                 id: metafieldId,
@@ -388,7 +391,7 @@ export const handler = async function(event, context) {
           console.log(`Creating metafield ${namespace}.${key} with value ${value}`);
           
           return axios.post(
-            `https://${SHOP_DOMAIN}/admin/api/2023-04/products/${productId}/metafields.json`,
+            `https://${SHOP_DOMAIN}/admin/api/${API_VERSION}/products/${productId}/metafields.json`,
             {
               metafield: {
                 namespace: namespace,
@@ -430,7 +433,7 @@ export const handler = async function(event, context) {
         
         // 3. Verify the metafields were set
         const verifyResponse = await axios.get(
-          `https://${SHOP_DOMAIN}/admin/api/2023-04/products/${productId}/metafields.json`,
+          `https://${SHOP_DOMAIN}/admin/api/${API_VERSION}/products/${productId}/metafields.json`,
           {
             headers: {
               'X-Shopify-Access-Token': ACCESS_TOKEN
@@ -535,7 +538,7 @@ export const handler = async function(event, context) {
       for (const metafield of draftOrderMetafields) {
         try {
           const metafieldResponse = await axios.post(
-            `https://${SHOP_DOMAIN}/admin/api/2023-04/draft_orders/${draftOrderId}/metafields.json`,
+            `https://${SHOP_DOMAIN}/admin/api/${API_VERSION}/draft_orders/${draftOrderId}/metafields.json`,
             { metafield },
             {
               headers: {
