@@ -76,7 +76,6 @@ document.addEventListener('DOMContentLoaded', function() {
  */
 function getProductInfo() {
   let productInfo = {
-    id: null,
     title: null,
     price: '0.00',
     handle: null,
@@ -92,12 +91,10 @@ function getProductInfo() {
       console.log("Found product JSON in page");
       const product = JSON.parse(productJson.textContent);
       
-      productInfo.id = product.id;
       productInfo.title = product.title;
       productInfo.handle = product.handle;
       
       console.log("Product JSON data:", {
-        id: product.id,
         title: product.title,
         variants_count: product.variants ? product.variants.length : 0
       });
@@ -132,11 +129,6 @@ function getProductInfo() {
           productInfo.price = (selectedVariant.price / 100).toFixed(2);
           productInfo.sku = selectedVariant.sku;
           
-          if (!productInfo.id && selectedVariant.product_id) {
-            productInfo.id = selectedVariant.product_id;
-            console.log(`Using product ID from variant: ${productInfo.id}`);
-          }
-          
           console.log(`Using variant: ID=${selectedVariant.id}, Price=${productInfo.price}, SKU=${productInfo.sku}`);
         }
       } else if (product.price !== undefined) {
@@ -145,15 +137,8 @@ function getProductInfo() {
     } else {
       console.log("No product JSON found, trying alternative methods");
       
-      // Method 2: Try to get product info from meta tags
-      const productIdMeta = document.querySelector('meta[property="product:product_id"]');
+      // Method 2: Try to get product title from meta tags
       const productTitle = document.querySelector('meta[property="og:title"]');
-      
-      if (productIdMeta) {
-        productInfo.id = productIdMeta.content;
-        console.log(`Found product ID in meta tag: ${productInfo.id}`);
-      }
-      
       if (productTitle) productInfo.title = productTitle.content;
       
       // Method 3: Try to get stocking number from DOM element
@@ -218,19 +203,13 @@ function getProductInfo() {
       }
     }
     
-    // Try to get product ID from a form with product ID
+    // Try to get variant ID from a form with product ID
     const productForm = document.querySelector('form[action*="/cart/add"]');
     if (productForm) {
       const productInput = productForm.querySelector('input[name="id"]');
       if (productInput) {
         productInfo.variant_id = productInput.value;
         console.log(`Found variant ID in product form: ${productInfo.variant_id}`);
-        
-        // Try to extract product ID from data attributes
-        if (productForm.hasAttribute('data-product-id')) {
-          productInfo.id = productForm.getAttribute('data-product-id');
-          console.log(`Found product ID in form attribute: ${productInfo.id}`);
-        }
       }
     }
 
@@ -238,11 +217,6 @@ function getProductInfo() {
     if (window.Shopify && window.Shopify.product) {
       const shopifyProduct = window.Shopify.product;
       console.log("Found Shopify.product:", shopifyProduct);
-      
-      if (!productInfo.id && shopifyProduct.id) {
-        productInfo.id = shopifyProduct.id;
-        console.log(`Found product ID in Shopify.product: ${productInfo.id}`);
-      }
       
       if (!productInfo.title && shopifyProduct.title) {
         productInfo.title = shopifyProduct.title;
@@ -276,25 +250,8 @@ function getProductInfo() {
         }
       }
     }
-
-    // If we have a variant ID but no product ID, try to determine the product ID from the page
-    if (!productInfo.id && productInfo.variant_id) {
-      console.log(`Have variant ID (${productInfo.variant_id}) but no product ID, will rely on server to look up product ID`);
-      
-      // We'll pass the variant ID to the server and let it look up the product ID
-      // This is handled in create-draft-order.js
-    }
     
-    // Clean up IDs - ensure they're numeric
-    if (productInfo.id) {
-      if (typeof productInfo.id === 'string' && productInfo.id.includes('gid://')) {
-        productInfo.id = productInfo.id.split('/').pop();
-        console.log(`Extracted numeric ID from GraphQL ID: ${productInfo.id}`);
-      } else if (typeof productInfo.id === 'string') {
-        productInfo.id = parseInt(productInfo.id, 10);
-      }
-    }
-    
+    // Clean up variant ID - ensure it's numeric
     if (productInfo.variant_id) {
       if (typeof productInfo.variant_id === 'string' && productInfo.variant_id.includes('gid://')) {
         productInfo.variant_id = productInfo.variant_id.split('/').pop();
@@ -365,16 +322,6 @@ function createDraftOrder(formData, productInfo) {
     price: productInfo.price || '0.00',
     quantity: 1
   };
-  
-  // Add product ID to ensure proper linking in Shopify admin
-  if (productInfo.id) {
-    const productId = typeof productInfo.id === 'string' && productInfo.id.includes('gid://') 
-      ? productInfo.id.split('/').pop()
-      : productInfo.id;
-    
-    lineItem.product_id = productId;
-    console.log(`Setting product_id: ${productId}`);
-  }
   
   // Add variant ID if available
   if (productInfo.variant_id) {

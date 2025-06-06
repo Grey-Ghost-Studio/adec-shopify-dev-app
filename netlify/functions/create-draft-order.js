@@ -184,7 +184,6 @@ export const handler = async function(event, context) {
         
         // Extract product title for email
         if (item.title) {
-          // productTitle = item.title;
           productTitle = item.title.replace(/^R[A-Z0-9]+\s*-\s*/, '').trim();
           console.log(`Product title cleaned: "${productTitle}" (from: "${item.title}")`);
         }
@@ -197,8 +196,8 @@ export const handler = async function(event, context) {
           }
         }
         
-        // If we have variant_id but no product_id, look up the product
-        if (item.variant_id && (!item.product_id || item.product_id === 'None')) {
+        // Look up product ID using variant_id (this is the main purpose)
+        if (item.variant_id) {
           try {
             console.log(`Looking up product ID for variant ${item.variant_id}...`);
             const variantResponse = await axios.get(
@@ -216,9 +215,11 @@ export const handler = async function(event, context) {
               const foundProductId = variantResponse.data.variant.product_id;
               console.log(`Found product ID: ${foundProductId} for variant ${item.variant_id}`);
               
-              // Update both the line item and the global productId variable
-              item.product_id = foundProductId;
+              // Store the product ID for metafield updates
               productId = foundProductId;
+              
+              // Also add it to the line item for proper linking in Shopify admin
+              item.product_id = foundProductId;
             } else {
               console.log("Variant found but no product_id in the response");
             }
