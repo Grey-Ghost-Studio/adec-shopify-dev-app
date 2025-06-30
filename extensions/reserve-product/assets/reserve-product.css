@@ -2,6 +2,7 @@
 .reserve-price {
     display: flex;
     align-items: center;
+
     .price-freight {
         font-size: 16px;
     }
@@ -15,11 +16,13 @@
 .reserve__form {
     position: relative;
     margin: 0 auto;
+
     .form-field.is-required label:after {
         content: "*";
         color: inherit;
     }
 }
+
 .required-message {
     position: absolute;
     top: 0;
@@ -29,14 +32,17 @@
     text-align: right;
     margin: 0;
 }
+
 .form-field {
     margin-bottom: 15px;
 }
+
 .form-field label {
     display: block;
     margin-bottom: 0.5em;
     font-weight: 600;
 }
+
 .form-field input,
 .form-field select {
     width: 100%;
@@ -45,12 +51,15 @@
     border-radius: 4px;
     font-size: 16px;
 }
+
 .form-field input::placeholder {
     color: #A5A5A5;
 }
+
 .form-field option:disabled {
     color: #12121261;
 }
+
 .reserve__submit-button {
     background-color: #0072CE;
     color: white;
@@ -59,7 +68,9 @@
     border-radius: 4px;
     font-size: 16px;
     cursor: pointer;
-    margin-top: 40px;;
+    margin-top: 40px;
+    ;
+
     &.is-loading {
         pointer-events: none;
         opacity: 0.6;
@@ -88,7 +99,7 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    max-width:750px;
+    max-width: 750px;
     width: 90%;
     max-height: 90vh;
     overflow-y: auto;
