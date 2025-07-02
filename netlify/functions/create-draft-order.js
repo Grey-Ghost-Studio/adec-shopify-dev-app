@@ -414,25 +414,36 @@ export const handler = async function(event, context) {
         const isReservedMetafield = existingMetafields.find(
           m => m.namespace === 'custom' && m.key === 'is_reserved'
         );
-        
+
         if (isReservedMetafield) {
           await updateMetafield(isReservedMetafield.id, 'true', 'boolean');
         } else {
           await createMetafield('custom', 'is_reserved', 'true', 'boolean');
         }
-        
-        // 2. Set the reservation_number metafield
+
+        // 2. Set the availability_status metafield
+        const availabilityStatusMetafield = existingMetafields.find(
+          m => m.namespace === 'custom' && m.key === 'availability_status'
+        );
+
+        if (availabilityStatusMetafield) {
+          await updateMetafield(availabilityStatusMetafield.id, 'Reserved');
+        } else {
+          await createMetafield('custom', 'availability_status', 'Reserved');
+        }
+
+        // 3. Set the reservation_number metafield
         const reservationNumberMetafield = existingMetafields.find(
           m => m.namespace === 'custom' && m.key === 'reservation_number'
         );
-        
+
         if (reservationNumberMetafield) {
           await updateMetafield(reservationNumberMetafield.id, reservationNumber);
         } else {
           await createMetafield('custom', 'reservation_number', reservationNumber);
         }
-        
-        // 3. Verify the metafields were set
+
+        // 4. Verify the metafields were set
         const verifyResponse = await axios.get(
           `https://${SHOP_DOMAIN}/admin/api/${API_VERSION}/products/${productId}/metafields.json`,
           {
@@ -441,25 +452,31 @@ export const handler = async function(event, context) {
             }
           }
         );
-        
+
         const updatedMetafields = verifyResponse.data.metafields;
-        
+
         const updatedIsReservedMetafield = updatedMetafields.find(
           m => m.namespace === 'custom' && m.key === 'is_reserved'
         );
-        
+
+        const updatedAvailabilityStatusMetafield = updatedMetafields.find(
+          m => m.namespace === 'custom' && m.key === 'availability_status'
+        );
+
         const updatedReservationNumberMetafield = updatedMetafields.find(
           m => m.namespace === 'custom' && m.key === 'reservation_number'
         );
-        
+
         console.log("VERIFICATION:");
         console.log(`- is_reserved metafield: ${updatedIsReservedMetafield ? 'Found (' + updatedIsReservedMetafield.value + ')' : 'Not found'}`);
+        console.log(`- availability_status metafield: ${updatedAvailabilityStatusMetafield ? 'Found (' + updatedAvailabilityStatusMetafield.value + ')' : 'Not found'}`);
         console.log(`- reservation_number metafield: ${updatedReservationNumberMetafield ? 'Found (' + updatedReservationNumberMetafield.value + ')' : 'Not found'}`);
-        
+
         console.log(`Product successfully marked as reserved using metafields`);
-        
+
         metafieldResult = {
           is_reserved: updatedIsReservedMetafield ? updatedIsReservedMetafield.value : null,
+          availability_status: updatedAvailabilityStatusMetafield ? updatedAvailabilityStatusMetafield.value : null,
           reservation_number: reservationNumber
         };
       } catch (error) {
