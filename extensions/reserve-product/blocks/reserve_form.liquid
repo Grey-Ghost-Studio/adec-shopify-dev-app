@@ -33,7 +33,7 @@
         
         <div class="form-field is-required">
           <label for="zip_code">Practice ZIP/Postal code</label>
-          <input type="text" id="zip_code" name="zip_code" pattern="[0-9]{5}" title="Please enter a valid 5-digit zip code" required>
+          <input type="text" id="zip_code" name="zip_code" pattern="^(\d{5}(-\d{4})?|[A-Za-z]\d[A-Za-z] ?\d[A-Za-z]\d)$" title="Please enter a valid US ZIP code or Canadian postal code" required>
         </div>
         
         <div class="form-field is-required">
