@@ -5,7 +5,7 @@
 <div id="reserve-modal-{{ product.id }}" class="reserve-modal" aria-hidden="true">
   <div class="reserve-modal__overlay" data-modal-close></div>
   <div class="reserve-modal__content" role="dialog" aria-modal="true">
-    <button type="button" class="reserve-modal__close" data-modal-close aria-label="Close">
+    <button type="button" class="reserve-modal__close" data-modal-close aria-label="{{ block.settings.close_button_label }}">
       <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 15 15" fill="none">
         <path d="M1 1L13.7959 13.7954" stroke="#0072CE" stroke-width="2" stroke-linecap="round"/>
         <path d="M13.7959 1L1.00049 13.7959" stroke="#0072CE" stroke-width="2" stroke-linecap="round"/>
@@ -14,7 +14,7 @@
 
     <div class="reserve-modal__header">
         <h2 class="reserve-title">{{ block.settings.form_title }}</h2>
-        <h3 class="reserve-price price price--large">{{ product.price | money_with_currency }}&nbsp;<span class="price-freight">+ Freight</span></h3>
+        <h3 class="reserve-price price price--large">{{ product.price | money_with_currency }}&nbsp;<span class="price-freight">{{ block.settings.freight_text }}</span></h3>
     </div>
 
     <div class="reserve-modal__body">
@@ -24,30 +24,30 @@
 
 
       <form class="reserve__form" onsubmit="return false;">
-        <p class="required-message">*Required fields</p>
+        <p class="required-message">{{ block.settings.required_message }}</p>
 
         <div class="form-field is-required">
-          <label for="practice_name">Practice name</label>
-          <input type="text" id="practice_name" name="practice_name" placeholder="e.g. Smile Dental" required>
+          <label for="practice_name">{{ block.settings.practice_name_label }}</label>
+          <input type="text" id="practice_name" name="practice_name" placeholder="{{ block.settings.practice_name_placeholder }}" required>
         </div>
         
         <div class="form-field is-required">
-          <label for="zip_code">Practice ZIP/Postal code</label>
-          <input type="text" id="zip_code" name="zip_code" pattern="^(\d{5}(-\d{4})?|[A-Za-z]\d[A-Za-z] ?\d[A-Za-z]\d)$" title="Please enter a valid US ZIP code or Canadian postal code" required>
+          <label for="zip_code">{{ block.settings.zip_code_label }}</label>
+          <input type="text" id="zip_code" name="zip_code" pattern="^(\d{5}(-\d{4})?|[A-Za-z]\d[A-Za-z] ?\d[A-Za-z]\d)$" title="{{ block.settings.zip_code_validation_message }}" required>
         </div>
         
         <div class="form-field is-required">
-          <label for="email">Contact email</label>
+          <label for="email">{{ block.settings.email_label }}</label>
           <input type="email" id="email" name="email" required>
         </div>
         
         <div class="form-field is-required">
-          <label for="role">Your role?</label>
+          <label for="role">{{ block.settings.role_label }}</label>
           <select id="role" name="role" required>
-            <option value="" disabled selected>&ndash;&nbsp;Select your role&nbsp;&ndash;</option>
-            <option value="doctor">Doctor or practice staff</option>
-            <option value="dealer">A-dec dealer</option>
-            <option value="sales">A-dec sales team</option>
+            <option value="" disabled selected>{{ block.settings.role_placeholder }}</option>
+            <option value="doctor">{{ block.settings.role_doctor }}</option>
+            <option value="dealer">{{ block.settings.role_dealer }}</option>
+            <option value="sales">{{ block.settings.role_sales }}</option>
           </select>
         </div>
         
@@ -67,16 +67,110 @@
     "stylesheet": "reserve-product.css",
     "settings": [
       {
+        "type": "header",
+        "content": "Modal Settings"
+      },
+      {
+        "type": "text",
+        "id": "close_button_label",
+        "label": "Close Button Label (accessibility)",
+        "default": "Close"
+      },
+      {
+        "type": "header",
+        "content": "Header Content"
+      },
+      {
         "type": "text",
         "id": "form_title",
         "label": "Form Title",
-        "default": "Reserve Product"
+        "default": "Reserve Package"
+      },
+      {
+        "type": "text",
+        "id": "freight_text",
+        "label": "Freight Text",
+        "default": "+ Freight"
+      },
+      {
+        "type": "header",
+        "content": "Form Content"
       },
       {
         "type": "richtext",
         "id": "form_description",
         "label": "Form Description",
-        "default": "<p>Reserve this package by filling out the form below. We will place a no-cost hold for <strong>2 business days</strong>. During that time, please work with an <a href='' title='A-dec 511R Dental Chair Package'>A-dec Territory Manager or Dealer</a> to complete the sale.</p>"
+        "default": "<p>Reserve this package by filling out the form below. We will place a no-cost hold for <strong>3 business days</strong>. During that time, please work with an A-dec Territory Manager or Dealer to complete the sale.</p>"
+      },
+      {
+        "type": "text",
+        "id": "required_message",
+        "label": "Required Fields Message",
+        "default": "*Required fields"
+      },
+      {
+        "type": "header",
+        "content": "Form Fields"
+      },
+      {
+        "type": "text",
+        "id": "practice_name_label",
+        "label": "Practice Name Label",
+        "default": "Practice name"
+      },
+      {
+        "type": "text",
+        "id": "practice_name_placeholder",
+        "label": "Practice Name Placeholder",
+        "default": "e.g. Smile Dental"
+      },
+      {
+        "type": "text",
+        "id": "zip_code_label",
+        "label": "ZIP/Postal Code Label",
+        "default": "Practice ZIP/Postal code"
+      },
+      {
+        "type": "text",
+        "id": "zip_code_validation_message",
+        "label": "ZIP Code Validation Message",
+        "default": "Please enter a valid 5-digit zip code"
+      },
+      {
+        "type": "text",
+        "id": "email_label",
+        "label": "Email Label",
+        "default": "Contact email"
+      },
+      {
+        "type": "text",
+        "id": "role_label",
+        "label": "Role Label",
+        "default": "Your role?"
+      },
+      {
+        "type": "text",
+        "id": "role_placeholder",
+        "label": "Role Placeholder",
+        "default": "– Select your role –"
+      },
+      {
+        "type": "text",
+        "id": "role_doctor",
+        "label": "Role Option: Doctor",
+        "default": "Doctor or practice staff"
+      },
+      {
+        "type": "text",
+        "id": "role_dealer",
+        "label": "Role Option: Dealer",
+        "default": "A-dec dealer"
+      },
+      {
+        "type": "text",
+        "id": "role_sales",
+        "label": "Role Option: Sales",
+        "default": "A-dec sales team"
       },
       {
         "type": "text",
