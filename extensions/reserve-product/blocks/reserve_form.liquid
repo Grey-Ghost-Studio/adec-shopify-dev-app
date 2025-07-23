@@ -26,6 +26,9 @@
       <form class="reserve__form" onsubmit="return false;">
         <p class="required-message">{{ block.settings.required_message }}</p>
 
+        <!-- Hidden language field -->
+        <input type="hidden" id="language" name="language" value="{{ request.locale.iso_code | default: 'en' }}">
+
         <div class="form-field is-required">
           <label for="practice_name">{{ block.settings.practice_name_label }}</label>
           <input type="text" id="practice_name" name="practice_name" placeholder="{{ block.settings.practice_name_placeholder }}" required>

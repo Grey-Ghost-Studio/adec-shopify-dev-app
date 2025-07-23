@@ -19,7 +19,8 @@ document.addEventListener('DOMContentLoaded', function() {
         practice_name: document.getElementById('practice_name').value,
         zip_code: document.getElementById('zip_code').value,
         email: document.getElementById('email').value,
-        role: document.getElementById('role').value
+        role: document.getElementById('role').value,
+        language: document.getElementById('language').value || document.documentElement.lang || 'en'
       };
       
       // Capitalize role
@@ -361,10 +362,12 @@ function createDraftOrder(formData, productInfo) {
   
   // Create draft order note
   let orderNote = '';
+  orderNote += `Reservation Number: \n`; // This will be filled by the serverless function
   orderNote += `Practice Name: ${formData.practice_name}\n`;
   orderNote += `Email: ${formData.email}\n`;
   orderNote += `ZIP/Postal Code: ${formData.zip_code}\n`;
   orderNote += `Role: ${formData.role}\n`;
+  orderNote += `Language: ${formData.language === 'fr' ? 'French' : 'English'}\n`;
   
   // Create the draft order data structure
   const draftOrderData = {
@@ -375,6 +378,7 @@ function createDraftOrder(formData, productInfo) {
       note: orderNote,
       tags: orderTags.join(', ')
     },
+    language: formData.language,
     recaptcha_token: formData.recaptcha_token,
     recaptcha_action: 'reserve_product' // Add action for v3 verification
   };
@@ -409,9 +413,12 @@ function createDraftOrder(formData, productInfo) {
     // Continue with your existing success handling...
     // [Rest of success handling remains the same as your original code]
     
-    // Create URL for confirmation page
-    const confirmationUrl = new URL("/pages/reservation-confirmation", window.location.origin);
-    
+    // Create confirmation page URL with language path
+    const basePath = formData.language === 'en' || !formData.language
+      ? '/pages/reservation-confirmation'
+      : `/${formData.language}/pages/reservation-confirmation`;
+    const confirmationUrl = new URL(basePath, window.location.origin);
+
     // Get reservation number from response
     let reservationNumber = data.reservation_number;
     if (!reservationNumber) {
@@ -420,7 +427,7 @@ function createDraftOrder(formData, productInfo) {
       reservationNumber = `TEMP-${timestamp}`;
     }
     
-    // Add parameters to confirmation URL
+    // Add parameters to confirmation URL including language
     confirmationUrl.searchParams.append('reservation_number', reservationNumber);
     confirmationUrl.searchParams.append('stocking_number', productInfo.stocking_number || '');
     confirmationUrl.searchParams.append('practice_name', formData.practice_name || '');
@@ -428,6 +435,7 @@ function createDraftOrder(formData, productInfo) {
     confirmationUrl.searchParams.append('zip_code', formData.zip_code || '');
     confirmationUrl.searchParams.append('role', formData.role || '');
     confirmationUrl.searchParams.append('product_title', productInfo.title || '');
+    confirmationUrl.searchParams.append('language', formData.language || 'en');
     
     //console.log("Redirecting to confirmation page:", confirmationUrl.toString());
     window.location.href = confirmationUrl.toString();

@@ -32,7 +32,7 @@ export const handler = async function(event, context) {
     
     // Parse request body
     const requestBody = JSON.parse(event.body || '{}');
-    const { draft_order, recaptcha_token, recaptcha_action } = requestBody;
+    const { draft_order, language, recaptcha_token, recaptcha_action } = requestBody;
 
     if (!draft_order) {
       return {
@@ -220,6 +220,28 @@ export const handler = async function(event, context) {
               
               // Also add it to the line item for proper linking in Shopify admin
               item.product_id = foundProductId;
+
+                // Get translated product title if French
+                if (language === 'fr') {
+                  try {
+                    console.log(`Fetching French translation for product ${foundProductId}...`);
+                    const frenchProductResponse = await axios.get(
+                      `https://${SHOP_DOMAIN}/admin/api/${API_VERSION}/products/${foundProductId}.json`,
+                      {
+                        headers: {
+                          'X-Shopify-Access-Token': ACCESS_TOKEN,
+                          'Accept-Language': 'fr'
+                        }
+                      }
+                    );
+                    if (frenchProductResponse.data.product.title) {
+                      productTitle = frenchProductResponse.data.product.title;
+                      console.log(`Updated to French product title: "${productTitle}"`);
+                    }
+                  } catch (error) {
+                    console.log('Could not fetch French product title, using default:', error.message);
+                  }
+                }
             } else {
               console.log("Variant found but no product_id in the response");
             }
@@ -293,6 +315,7 @@ export const handler = async function(event, context) {
       if (roleMatch && roleMatch[1]) {
         role = roleMatch[1].trim();
       }
+      
     }
     
     // Prepend the reservation number to the note
@@ -486,6 +509,12 @@ export const handler = async function(event, context) {
         },
         {
           namespace: 'reservation',
+          key: 'language',
+          value: language || 'en', // Default to English if not provided
+          type: 'single_line_text_field'
+        },
+        {
+          namespace: 'reservation',
           key: 'stocking_number',
           value: stockingNumber || productHandle || '',
           type: 'single_line_text_field'
@@ -524,12 +553,6 @@ export const handler = async function(event, context) {
           namespace: 'reservation',
           key: 'reservation_date',
           value: new Date().toLocaleDateString(),
-          type: 'single_line_text_field'
-        },
-        {
-          namespace: 'reservation',
-          key: 'hold_duration',
-          value: '2 business days',
           type: 'single_line_text_field'
         }
       ];
@@ -591,7 +614,8 @@ export const handler = async function(event, context) {
     console.log("Final response data:", {
       reservation_number: reservationNumber,
       draft_order: { id: draftOrderId },
-      metafields_added: draftOrderMetafieldsResult ? draftOrderMetafieldsResult.successful : 0
+      metafields_added: draftOrderMetafieldsResult ? draftOrderMetafieldsResult.successful : 0,
+      language: language
     });
       
     // Return successful response with enhanced debugging information
@@ -608,6 +632,7 @@ export const handler = async function(event, context) {
         },
         product_status_updated: metafieldResult ? true : false,
         product_id: productId || 'Not found',
+        language: language,
         metafield_result: metafieldResult || {
           error: "Metafield update was not attempted",
           reason: productId ? "Unknown error" : "No product ID found"
