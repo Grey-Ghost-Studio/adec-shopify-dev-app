@@ -40,6 +40,15 @@
         </div>
         
         <div class="form-field is-required">
+          <label for="country">{{ block.settings.country_label }}</label>
+          <select id="country" name="country" required>
+            <option value="" disabled selected>{{ block.settings.country_placeholder }}</option>
+            <option value="us">{{ block.settings.country_us }}</option>
+            <option value="ca">{{ block.settings.country_canada }}</option>
+          </select>
+        </div>
+        
+        <div class="form-field is-required">
           <label for="email">{{ block.settings.email_label }}</label>
           <input type="email" id="email" name="email" required>
         </div>
@@ -138,6 +147,30 @@
         "id": "zip_code_validation_message",
         "label": "ZIP Code Validation Message",
         "default": "Please enter a valid 5-digit zip code"
+      },
+      {
+        "type": "text",
+        "id": "country_label",
+        "label": "Country Label",
+        "default": "Country"
+      },
+      {
+        "type": "text",
+        "id": "country_placeholder",
+        "label": "Country Placeholder",
+        "default": "Please select"
+      },
+      {
+        "type": "text",
+        "id": "country_us",
+        "label": "Country Option: United States",
+        "default": "United States"
+      },
+      {
+        "type": "text",
+        "id": "country_canada",
+        "label": "Country Option: Canada",
+        "default": "Canada"
       },
       {
         "type": "text",

@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
       const formData = {
         practice_name: document.getElementById('practice_name').value,
         zip_code: document.getElementById('zip_code').value,
+        country: document.getElementById('country').value,
         email: document.getElementById('email').value,
         role: document.getElementById('role').value,
         language: document.getElementById('language').value || document.documentElement.lang || 'en'
@@ -366,6 +367,7 @@ function createDraftOrder(formData, productInfo) {
   orderNote += `Practice Name: ${formData.practice_name}\n`;
   orderNote += `Email: ${formData.email}\n`;
   orderNote += `ZIP/Postal Code: ${formData.zip_code}\n`;
+  orderNote += `Country: ${formData.country === 'us' ? 'United States' : formData.country === 'ca' ? 'Canada' : formData.country}\n`;
   orderNote += `Role: ${formData.role}\n`;
   orderNote += `Language: ${formData.language === 'fr' ? 'French' : 'English'}\n`;
   
@@ -433,6 +435,7 @@ function createDraftOrder(formData, productInfo) {
     confirmationUrl.searchParams.append('practice_name', formData.practice_name || '');
     confirmationUrl.searchParams.append('email', formData.email || '');
     confirmationUrl.searchParams.append('zip_code', formData.zip_code || '');
+    confirmationUrl.searchParams.append('country', formData.country || '');
     confirmationUrl.searchParams.append('role', formData.role || '');
     confirmationUrl.searchParams.append('product_title', productInfo.title || '');
     confirmationUrl.searchParams.append('language', formData.language || 'en');

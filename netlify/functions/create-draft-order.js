@@ -298,6 +298,7 @@ export const handler = async function(event, context) {
     // Parse the note to extract customer information for metafields
     let practiceName = '';
     let zipCode = '';
+    let country = '';
     let role = '';
     
     if (draft_order.note) {
@@ -309,6 +310,11 @@ export const handler = async function(event, context) {
       const zipCodeMatch = draft_order.note.match(/ZIP\/Postal Code: ([^\n]+)/);
       if (zipCodeMatch && zipCodeMatch[1]) {
         zipCode = zipCodeMatch[1].trim();
+      }
+      
+      const countryMatch = draft_order.note.match(/Country: ([^\n]+)/);
+      if (countryMatch && countryMatch[1]) {
+        country = countryMatch[1].trim();
       }
       
       const roleMatch = draft_order.note.match(/Role: ([^\n]+)/);
@@ -535,6 +541,12 @@ export const handler = async function(event, context) {
           namespace: 'reservation',
           key: 'customer_zip_code',
           value: zipCode,
+          type: 'single_line_text_field'
+        },
+        {
+          namespace: 'reservation',
+          key: 'customer_country',
+          value: country,
           type: 'single_line_text_field'
         },
         {
