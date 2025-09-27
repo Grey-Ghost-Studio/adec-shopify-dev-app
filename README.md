@@ -1,78 +1,121 @@
-# Shopify App Template - Extension only
+# Product Reservation Shopify App
 
-This is a template for building an [extension-only Shopify app](https://shopify.dev/docs/apps/build/app-extensions/build-extension-only-app). It contains the basics for building a Shopify app that uses only app extensions.
+An extension-only Shopify app that implements a product reservation system with a serverless backend. The app allows customers to reserve products through a modal form and creates draft orders for merchants to process.
 
-This template doesn't include a server or the ability to embed a page in the Shopify Admin. If you want either of these capabilities, choose the [Remix app template](https://github.com/Shopify/shopify-app-template-remix) instead.
+## Architecture
 
-Whether you choose to use this template or another one, you can use your preferred package manager and the Shopify CLI with [these steps](#installing-the-template).
+This app consists of:
 
-## Benefits
+1. **Theme Extension** (`extensions/reserve-product/`): Frontend UI that merchants install on their storefront
 
-Shopify apps are built on a variety of Shopify tools to create a great merchant experience. The [create an app](https://shopify.dev/docs/apps/getting-started/create) tutorial in our developer documentation will guide you through creating a Shopify app.
+   - Modal-based reservation form with practice info, contact details, and role selection
+   - Form validation and reCAPTCHA v3 integration
+   - Internationalization support (English/French)
 
-This app template does little more than install the CLI and scaffold a repository.
+2. **Serverless Backend** (`netlify/functions/`): API endpoints via Netlify Functions
+   - `create-draft-order.js`: Main business logic for creating draft orders with reserved products
+   - OAuth flow handlers for Shopify API authentication
+   - App proxy integration at `/apps/reserve-product/*`
 
 ## Getting started
 
 ### Requirements
 
-1. You must [download and install Node.js](https://nodejs.org/en/download/) if you don't already have it.
-1. You must [create a Shopify partner account](https://partners.shopify.com/signup) if you don’t have one.
-1. You must create a store for testing if you don't have one, either a [development store](https://help.shopify.com/en/partners/dashboard/development-stores#create-a-development-store) or a [Shopify Plus sandbox store](https://help.shopify.com/en/partners/dashboard/managing-stores/plus-sandbox-store).
+1. [Node.js](https://nodejs.org/en/download/) installed
+1. [Shopify Partner account](https://partners.shopify.com/signup)
+1. [Shopify CLI](https://shopify.dev/docs/apps/tools/cli) installed
+1. [Netlify CLI](https://docs.netlify.com/cli/get-started/) installed
+1. A [development store](https://help.shopify.com/en/partners/dashboard/development-stores#create-a-development-store) for testing
+1. [reCAPTCHA v3](https://developers.google.com/recaptcha/docs/v3) keys
 
-### Installing the template
+### Installation
 
-This template can be installed using your preferred package manager:
+1. Clone this repository and install dependencies:
 
-Using yarn:
-
-```shell
-yarn create @shopify/app
+```bash
+npm install
 ```
 
-Using npm:
+2. Ensure you have the `.env` file with required environment variables (should be provided during handoff)
 
-```shell
-npm init @shopify/app@latest
-```
+### Local Development
 
-Using pnpm:
+Start the combined development server (Shopify + Netlify):
 
-```shell
-pnpm create @shopify/app@latest
-```
-
-This will clone the template and install the required dependencies.
-
-#### Local Development
-
-[The Shopify CLI](https://shopify.dev/docs/apps/tools/cli) connects to an app in your Partners dashboard. It provides environment variables and runs commands in parallel.
-
-You can develop locally using your preferred package manager. Run one of the following commands from the root of your app.
-
-Using yarn:
-
-```shell
-yarn dev
-```
-
-Using npm:
-
-```shell
+```bash
 npm run dev
 ```
 
-Using pnpm:
+This runs both the Shopify CLI dev server and Netlify functions locally.
 
-```shell
-pnpm run dev
+For independent development:
+
+- Shopify extensions only: `npm run shopify -- app dev`
+- Netlify functions only: `npm run netlify-dev`
+
+### Deployment
+
+Deploy to production using CLI commands:
+
+1. **Deploy Netlify Functions:**
+
+```bash
+netlify deploy --prod
+# or use npm script:
+npm run deploy-functions
 ```
 
-Open the URL generated in your console. Once you grant permission to the app, you can start development (such as generating extensions).
+2. **Deploy Shopify App Extensions:**
 
-## Developer resources
+```bash
+shopify app deploy
+# or use npm script:
+npm run deploy
+```
 
-- [Introduction to Shopify apps](https://shopify.dev/docs/apps/getting-started)
-- [App extensions](https://shopify.dev/docs/apps/build/app-extensions)
-- [Extension only apps](https://shopify.dev/docs/apps/build/app-extensions/build-extension-only-app)
+### Additional Commands
+
+```bash
+# View app configuration
+shopify app info
+# or: npm run shopify -- app info
+
+# Build the app
+npm run build
+```
+
+## How It Works
+
+### Form Submission Flow
+
+1. Customer fills reservation form in modal on product page
+2. Frontend validates input and captures reCAPTCHA token
+3. POST request sent to `/apps/reserve-product/create-draft-order`
+4. Backend validates shop domain, creates draft order, updates product metafields
+5. Returns draft order ID and invoice URL to frontend
+
+### Product Metafields
+
+The app manages these product metafields:
+
+- `custom.availability_status`: Tracks reservation state
+- `custom.reservation_id`: Links product to draft order
+- Various practice and contact info fields
+
+## Testing
+
+Manual testing workflow:
+
+1. Install app on development store ✅
+2. Ensure reserve form block is added product page in theme admin
+3. Test reservation flow end-to-end
+4. Verify draft order creation in Shopify admin
+5. Check product metafields are updated correctly
+
+## Developer Resources
+
+- [Shopify App Extensions](https://shopify.dev/docs/apps/build/app-extensions)
+- [Extension Only Apps](https://shopify.dev/docs/apps/build/app-extensions/build-extension-only-app)
 - [Shopify CLI](https://shopify.dev/docs/apps/tools/cli)
+- [Netlify Functions](https://docs.netlify.com/functions/overview/)
+- [App Proxy](https://shopify.dev/docs/apps/build/online-store/app-proxies)
