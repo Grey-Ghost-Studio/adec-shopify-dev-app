@@ -111,6 +111,7 @@ Manual testing workflow:
 3. Test reservation flow end-to-end
 4. Verify draft order creation in Shopify admin
 5. Check product metafields are updated correctly
+6. Mirror changes to production app code and re-deploy (to the correct Netlify account).
 
 ## Developer Resources
 
