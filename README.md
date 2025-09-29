@@ -104,14 +104,16 @@ The app manages these product metafields:
 
 ## Testing
 
-Manual testing workflow:
+Development store app testing workflow:
 
 1. Install app on development store ✅
 2. Ensure reserve form block is added product page in theme admin
 3. Test reservation flow end-to-end
 4. Verify draft order creation in Shopify admin
 5. Check product metafields are updated correctly
-6. Mirror changes to production app code and re-deploy (to the correct Netlify account).
+6. Mirror changes to production app code and re-deploy (to the appropriate Netlify account).
+
+Prod store app testing will be performed by A-dec team.
 
 ## Developer Resources
 
