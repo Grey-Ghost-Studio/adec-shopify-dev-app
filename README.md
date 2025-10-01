@@ -115,6 +115,16 @@ Development store app testing workflow:
 
 Prod store app testing will be performed by A-dec team.
 
+## Vitest Integration Tests
+
+Optional integration tests are included in `tests/create-draft-order-real.test.js`. These tests mock Shopify API calls and validate the main reservation logic.
+
+To run the tests:
+
+```bash
+npm test -- --run
+```
+
 ## Developer Resources
 
 - [Shopify App Extensions](https://shopify.dev/docs/apps/build/app-extensions)
