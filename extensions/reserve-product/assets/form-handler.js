@@ -9,8 +9,6 @@ document.addEventListener('DOMContentLoaded', function () {
 	const reserveForm = document.querySelector('.reserve__form')
 	if (reserveForm) {
 		reserveForm.addEventListener('submit', function (event) {
-			event.preventDefault()
-
 			// Show loading state immediately
 			toggleLoadingState(true)
 
@@ -524,48 +522,31 @@ function createDraftOrder(formData, productInfo) {
 		.catch((error) => {
 			console.error('Error creating draft order:', error)
 
+			let isDoubleReservationError = false
+
 			// Use server's friendly message for specific error types
 			let errorMessage =
 				'There was an error submitting your reservation. Please try again.'
 
-			// Check if this is a structured error with error_type
+			// Check if this is a PRODUCT_ALREADY_RESERVED error using the structured error properties
 			if (
 				error.error_type === 'PRODUCT_ALREADY_RESERVED' &&
 				error.serverMessage
 			) {
+				isDoubleReservationError = true
 				errorMessage = error.serverMessage
-			} else if (
-				error.message &&
-				error.message.includes('PRODUCT_ALREADY_RESERVED')
-			) {
-				// Fallback: try to parse JSON from error message text
-				try {
-					const jsonMatch = error.message.match(/\{.*\}/)
-					if (jsonMatch) {
-						const errorData = JSON.parse(jsonMatch[0])
-						if (
-							errorData.error_type === 'PRODUCT_ALREADY_RESERVED' &&
-							errorData.message
-						) {
-							errorMessage = errorData.message
-						}
-					}
-				} catch (parseError) {
-					// If parsing fails, stick with generic message
-				}
 			}
 
+			toggleLoadingState(false, isDoubleReservationError)
 			showMessage('error', errorMessage)
-			toggleLoadingState(false)
 		})
 }
 
 /**
  * Toggles loading state on the submit button
  */
-function toggleLoadingState(isLoading) {
+function toggleLoadingState(isLoading, disableButton = false) {
 	const submitButton = document.querySelector('.reserve__submit-button')
-	const submitButtonText = submitButton ? submitButton.innerText : ''
 	if (!submitButton) return
 
 	if (isLoading) {
@@ -573,9 +554,10 @@ function toggleLoadingState(isLoading) {
 		submitButton.classList.add('is-loading')
 		submitButton.innerText = 'Submitting...'
 	} else {
-		submitButton.disabled = false
+		submitButton.disabled = disableButton
 		submitButton.classList.remove('is-loading')
-		submitButton.innerText = submitButtonText || 'Submit'
+		submitButton.innerText =
+			submitButton.getAttribute('data-original-text') || 'Submit'
 	}
 }
 
