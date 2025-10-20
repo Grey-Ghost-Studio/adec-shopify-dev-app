@@ -457,41 +457,29 @@ function createDraftOrder(formData, productInfo) {
 		headers: { 'Content-Type': 'application/json' },
 		body: JSON.stringify(draftOrderData),
 	})
-		.then((response) => {
+		.then(async (response) => {
 			if (!response.ok) {
-				return response
-					.json()
-					.then((errorData) => {
-						console.error('Error response:', errorData)
-						const error = new Error(
-							errorData.message ||
-								errorData.error ||
-								`Request failed with status ${response.status}`
-						)
-						// Add structured error properties from backend
-						error.error_type = errorData.error_type
-						error.statusCode = response.status
-						throw error
-					})
-					.catch((jsonError) => {
-						// If JSON parsing fails, fall back to text
-						return response.text().then((text) => {
-							console.error('Non-JSON error response:', text)
-							throw new Error(
-								`Request failed with status ${response.status}: ${text}`
-							)
-						})
-					})
+				let errorData
+				try {
+					const text = await response.text()
+					errorData = JSON.parse(text)
+					console.error('Error response:', errorData)
+				} catch (parseError) {
+					console.error('Non-JSON error response')
+					throw new Error(`Request failed with status ${response.status}`)
+				}
+
+				const error = new Error(
+					errorData.message || errorData.error || 'Server error'
+				)
+				error.error_type = errorData.error_type
+				error.serverMessage = errorData.message
+				error.statusCode = response.status
+				throw error
 			}
 			return response.json()
 		})
 		.then((data) => {
-			//console.log("Draft order created successfully!");
-			//console.log("FULL RESPONSE DATA:", JSON.stringify(data, null, 2));
-
-			// Continue with your existing success handling...
-			// [Rest of success handling remains the same as your original code]
-
 			// Create confirmation page URL with language path
 			const basePath =
 				formData.language === 'en' || !formData.language
@@ -536,12 +524,35 @@ function createDraftOrder(formData, productInfo) {
 		.catch((error) => {
 			console.error('Error creating draft order:', error)
 
-			// Use server's error message for specific error types, generic message otherwise
+			// Use server's friendly message for specific error types
 			let errorMessage =
 				'There was an error submitting your reservation. Please try again.'
 
-			if (error.error_type === 'PRODUCT_ALREADY_RESERVED') {
-				errorMessage = error.message
+			// Check if this is a structured error with error_type
+			if (
+				error.error_type === 'PRODUCT_ALREADY_RESERVED' &&
+				error.serverMessage
+			) {
+				errorMessage = error.serverMessage
+			} else if (
+				error.message &&
+				error.message.includes('PRODUCT_ALREADY_RESERVED')
+			) {
+				// Fallback: try to parse JSON from error message text
+				try {
+					const jsonMatch = error.message.match(/\{.*\}/)
+					if (jsonMatch) {
+						const errorData = JSON.parse(jsonMatch[0])
+						if (
+							errorData.error_type === 'PRODUCT_ALREADY_RESERVED' &&
+							errorData.message
+						) {
+							errorMessage = errorData.message
+						}
+					}
+				} catch (parseError) {
+					// If parsing fails, stick with generic message
+				}
 			}
 
 			showMessage('error', errorMessage)
