@@ -459,12 +459,29 @@ function createDraftOrder(formData, productInfo) {
 	})
 		.then((response) => {
 			if (!response.ok) {
-				return response.text().then((text) => {
-					console.error('Error response:', text)
-					throw new Error(
-						`Request failed with status ${response.status}: ${text}`
-					)
-				})
+				return response
+					.json()
+					.then((errorData) => {
+						console.error('Error response:', errorData)
+						const error = new Error(
+							errorData.message ||
+								errorData.error ||
+								`Request failed with status ${response.status}`
+						)
+						// Add structured error properties from backend
+						error.error_type = errorData.error_type
+						error.statusCode = response.status
+						throw error
+					})
+					.catch((jsonError) => {
+						// If JSON parsing fails, fall back to text
+						return response.text().then((text) => {
+							console.error('Non-JSON error response:', text)
+							throw new Error(
+								`Request failed with status ${response.status}: ${text}`
+							)
+						})
+					})
 			}
 			return response.json()
 		})
@@ -518,11 +535,15 @@ function createDraftOrder(formData, productInfo) {
 		})
 		.catch((error) => {
 			console.error('Error creating draft order:', error)
-			// Show generic error message to user except in the case of product already reserved
-			const errorMessage =
-				error.errorType === 'PRODUCT_ALREADY_RESERVED'
-					? error.message
-					: 'There was an error submitting your reservation. Please try again.'
+
+			// Use server's error message for specific error types, generic message otherwise
+			let errorMessage =
+				'There was an error submitting your reservation. Please try again.'
+
+			if (error.error_type === 'PRODUCT_ALREADY_RESERVED') {
+				errorMessage = error.message
+			}
+
 			showMessage('error', errorMessage)
 			toggleLoadingState(false)
 		})
